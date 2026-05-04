@@ -390,7 +390,7 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
                   <div className="space-y-3 md:space-y-4">
                     <div className="group">
                       <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Player Name*</label>
-                      <input type="text" required placeholder="Player Name" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.playername} onChange={e => setRegForm({...regForm, playername: e.target.value})} />
+                      <input type="text" required placeholder="Player Full Name" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.playername} onChange={e => setRegForm({...regForm, playername: e.target.value})} />
                     </div>
                     <div className="group">
                       <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Player Age*</label>
