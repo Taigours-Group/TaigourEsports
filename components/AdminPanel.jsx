@@ -598,7 +598,7 @@ const AdminPanel = ({
                                 <div className={`font-bold flex items-center gap-1 ${isSmsSent(item) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
                                   <i className={`fa-solid ${isSmsSent(item) ? 'fa-circle-check' : 'fa-signal'}`}></i>
                                   SMS: {isSmsSent(item) ? 'SENT' : 'PENDING'}
-                                </div>
+                                </div> 
                               )}
                               {activeView === 'registrations' && (
                                 <div className="text-gray-300">
