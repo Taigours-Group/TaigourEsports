@@ -1,0 +1,131 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taigour's E-Sports - Forge Your Legacy</title>
+    <meta name="google-site-verification" content="weBUCwsfsqHqItD96TWd2burm_4Q6ux-IR9-KetA3ok" />
+    <link rel="icon" href="https://res.cloudinary.com/dbjjzyrr3/image/upload/v1768567786/tiger-logo_jcf2zj.png" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#00d4ff',
+              accent: '#ffcc00',
+              secondary: '#8000ff',
+              tertiary: '#00ff80',
+              pink: '#ff0080',
+              'bg-dark': '#070709',
+              'bg-card': '#0f0f13',
+              'dark': '#000000'
+            },
+            fontFamily: {
+              orbitron: ['Orbitron', 'sans-serif'],
+              rajdhani: ['Rajdhani', 'sans-serif']
+            },
+            animation: {
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'glitch': 'glitch 2s infinite',
+              'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'slide-up': 'slideUp 0.4s ease-out forwards',
+            },
+            keyframes: {
+              glitch: {
+                '0%, 100%': { transform: 'translate(0)' },
+                '33%': { transform: 'translate(-2px, 2px)' },
+                '66%': { transform: 'translate(2px, -2px)' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' }
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' }
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #070709;
+        color: white;
+        font-family: 'Rajdhani', sans-serif;
+        scroll-behavior: smooth;
+        overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .glass {
+        background: rgba(15, 15, 19, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .bottom-nav-glass {
+        background: rgba(15, 15, 19, 0.7);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .neon-border {
+        position: relative;
+        border: 1px solid rgba(0, 212, 255, 0.1);
+      }
+      .neon-border:hover {
+        border-color: rgba(0, 212, 255, 0.4);
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+      }
+      .cyber-button {
+        clip-path: polygon(12% 0, 100% 0, 100% 75%, 88% 100%, 0 100%, 0 25%);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .cyber-button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.2);
+      }
+      .text-glow {
+        text-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #00d4ff;
+        border-radius: 10px;
+      }
+      @media (max-width: 768px) {
+        .mobile-safe-bottom {
+          padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+<script type="module" src="/index.jsx"></script>
+</body>
+</html>
