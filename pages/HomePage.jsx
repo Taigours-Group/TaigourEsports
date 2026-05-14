@@ -70,11 +70,11 @@ const HomePage = ({ tournaments, leaderboard, registrations }) => {
             Forge Your Legacy, Rule the Game. Join the ultimate competitive arena and compete for glory.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-5 justify-center">
-            <Link to="/tournaments" className="px-12 py-4 bg-primary text-dark font-orbitron font-black text-sm uppercase tracking-widest cyber-button shadow-[0_0_30px_rgba(0,212,255,0.3)]">
+          <div className="flex flex-row sm:flex-row gap-4 justify-center">
+            <Link to="/tournaments" className="px-6 sm:px-12 py-3 sm:py-4 bg-primary text-dark font-orbitron font-black text-xs sm:text-sm uppercase tracking-widest cyber-button shadow-[0_0_30px_rgba(0,212,255,0.3)]">
               JOIN NOW <i className="fa-solid fa-bolt-lightning ml-2"></i>
             </Link>
-            <Link to="/leaderboard" className="px-12 py-4 border border-white/10 hover:border-primary text-white font-orbitron font-black text-sm uppercase tracking-widest transition-all hover:bg-white/5">
+            <Link to="/leaderboard" className="px-6 sm:px-12 py-3 sm:py-4 border border-white/10 hover:border-primary text-white font-orbitron font-black text-xs sm:text-sm uppercase tracking-widest transition-all hover:bg-white/5">
               RANKINGS <i className="fa-solid fa-crown ml-2"></i>
             </Link>
           </div>

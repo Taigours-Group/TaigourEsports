@@ -248,55 +248,7 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
                   </div>
                 </div>
 
-                <p className="text-gray-400 font-rajdhani text-lg md:text-xl leading-relaxed mb-8 md:mb-10 border-l-2 border-primary/30 pl-4 md:pl-6 italic">
-                  {tournament.description || "Deploy into the most competitive arena of the season. Only the elite will survive and claim the ultimate reward."}
-                </p>
-
-                <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-8 overflow-x-auto no-scrollbar">
-                   <button onClick={() => setActiveTab('rules')} className={`pb-4 font-orbitron text-[10px] md:text-xs uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'rules' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>
-                      ENGAGEMENT RULES
-                      {activeTab === 'rules' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#00d4ff]"></span>}
-                   </button>
-                   <button onClick={() => setActiveTab('prizes')} className={`pb-4 font-orbitron text-[10px] md:text-xs uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'prizes' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>
-                      REWARD BREAKDOWN
-                      {activeTab === 'prizes' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#00d4ff]"></span>}
-                   </button>
-                </div>
-
-                <div className="min-h-[200px] md:min-h-[300px] animate-fade-in">
-                   {activeTab === 'rules' ? (
-                     <ul className="space-y-4 md:space-y-6 font-rajdhani text-gray-300">
-                        {(tournament.rules || [
-                          'Must use mobile device only. No Emulators.',
-                          'Players must be present 15 minutes before start.',
-                          'Hacking or exploitation results in instant disqualification.',
-                          'Admin decisions are final and binding.'
-                        ]).map((rule, idx) => (
-                          <li key={idx} className="flex gap-4 md:gap-6 items-start group">
-                             <span className="w-5 h-5 md:w-6 md:h-6 rounded bg-primary/20 border border-primary/30 flex items-center justify-center text-[9px] md:text-[10px] font-black text-primary shrink-0 group-hover:bg-primary group-hover:text-bg-dark transition-all">{idx + 1}</span>
-                             <p className="text-base md:text-lg leading-snug">{rule}</p>
-                          </li>
-                        ))}
-                     </ul>
-                   ) : (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                        {(tournament.prizeBreakdown || [
-                          { position: '1st Place', reward: '60% of Prize Pool' },
-                          { position: '2nd Place', reward: '25% of Prize Pool' },
-                          { position: '3rd Place', reward: '15% of Prize Pool' }
-                        ]).map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-4 md:p-6 bg-white/5 rounded border border-white/5 group hover:border-primary/30 transition-all">
-                             <span className="text-gray-500 uppercase font-black tracking-widest text-[9px] md:text-[10px]">{item.position}</span>
-                             <span className="text-primary font-black text-lg md:text-xl group-hover:scale-105 transition-transform">{item.reward}</span>
-                          </div>
-                        ))}
-                     </div>
-                   )}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-4 space-y-6">
+                <div className="lg:col-span-4 space-y-6 mb-5 lg:hidden">
               <div className="glass p-6 md:p-8 rounded-xl border border-white/5 space-y-6 md:space-y-8 lg:sticky lg:top-24">
                 <div className="space-y-5 md:space-y-6">
                   <div className="flex items-center gap-4 group">
@@ -349,6 +301,110 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
                 </div>
               </div>
             </div>
+
+                <p className="text-gray-400 font-rajdhani text-lg md:text-xl leading-relaxed mb-8 md:mb-10 border-l-2 border-primary/30 pl-4 md:pl-6 italic">
+                  {tournament.description || "Deploy into the most competitive arena of the season. Only the elite will survive and claim the ultimate reward."}
+                </p>
+
+                <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-8 overflow-x-auto no-scrollbar">
+                   <button onClick={() => setActiveTab('rules')} className={`pb-4 font-orbitron text-[10px] md:text-xs uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'rules' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>
+                      ENGAGEMENT RULES
+                      {activeTab === 'rules' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#00d4ff]"></span>}
+                   </button>
+                   <button onClick={() => setActiveTab('prizes')} className={`pb-4 font-orbitron text-[10px] md:text-xs uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'prizes' ? 'text-primary' : 'text-gray-500 hover:text-white'}`}>
+                      REWARD BREAKDOWN
+                      {activeTab === 'prizes' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_#00d4ff]"></span>}
+                   </button>
+                </div>
+
+                <div className="min-h-[200px] md:min-h-[300px] animate-fade-in">
+                   {activeTab === 'rules' ? (
+                     <ul className="space-y-4 md:space-y-6 font-rajdhani text-gray-300">
+                        {(tournament.rules || [
+                          'Must use mobile device only. No Emulators.',
+                          'Players must be present 15 minutes before start.',
+                          'Hacking or exploitation results in instant disqualification.',
+                          'Admin decisions are final and binding.'
+                        ]).map((rule, idx) => (
+                          <li key={idx} className="flex gap-4 md:gap-6 items-start group">
+                             <span className="w-5 h-5 md:w-6 md:h-6 rounded bg-primary/20 border border-primary/30 flex items-center justify-center text-[9px] md:text-[10px] font-black text-primary shrink-0 group-hover:bg-primary group-hover:text-bg-dark transition-all">{idx + 1}</span>
+                             <p className="text-base md:text-lg leading-snug">{rule}</p>
+                          </li>
+                        ))}
+                     </ul>
+                   ) : (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                        {(tournament.prizeBreakdown || [
+                          { position: '1st Place', reward: '60% of Prize Pool' },
+                          { position: '2nd Place', reward: '25% of Prize Pool' },
+                          { position: '3rd Place', reward: '15% of Prize Pool' }
+                        ]).map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center p-4 md:p-6 bg-white/5 rounded border border-white/5 group hover:border-primary/30 transition-all">
+                             <span className="text-gray-500 uppercase font-black tracking-widest text-[9px] md:text-[10px]">{item.position}</span>
+                             <span className="text-primary font-black text-lg md:text-xl group-hover:scale-105 transition-transform">{item.reward}</span>
+                          </div>
+                        ))}
+                     </div>
+                   )}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-6 hidden lg:block">
+              <div className="glass p-6 md:p-8 rounded-xl border border-white/5 space-y-6 md:space-y-8 lg:sticky lg:top-24">
+                <div className="space-y-5 md:space-y-6">
+                  <div className="flex items-center gap-4 group">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-primary transition-all shrink-0">
+                      <i className="fas fa-calendar-day text-primary text-lg md:text-xl"></i>
+                    </div>
+                    <div>
+                      <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest block">DEPARTURE</span>
+                      <span className="text-white font-bold text-sm md:text-base">{tournament.date} @ {tournament.time}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 group">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-primary transition-all shrink-0">
+                      <i className="fas fa-map-marker-alt text-primary text-lg md:text-xl"></i>
+                    </div>
+                    <div>
+                      <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest block">ARENA</span>
+                      <span className="text-white font-bold text-sm md:text-base">{tournament.location}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 group relative cursor-help">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-primary transition-all shrink-0">
+                      <i className="fas fa-ticket-simple text-primary text-lg md:text-xl"></i>
+                    </div>
+                    <div>
+                      <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest block">ENTRY FEE</span>
+                      <span className="text-accent font-black text-lg md:text-xl">{tournament.entry_fee}</span>
+                    </div>
+                    <FeeTooltip />
+                  </div>
+                </div>
+
+                <div className="pt-6 md:pt-8 border-t border-white/5 space-y-4">
+                  <button 
+                    disabled={!canRegister}
+                    onClick={() => setShowRegModal(true)}
+                    className={`w-full py-4 md:py-5 font-orbitron font-black text-sm uppercase tracking-[0.2em] md:tracking-[0.3em] transition-all cyber-button ${!canRegister ? 'bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700' : 'bg-primary text-bg-dark shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:shadow-[0_0_40px_rgba(0,212,255,0.3)]'}`}
+                  >
+                    {isSoldOut ? 'SLOTS FULL' : registrationUpcoming ? 'COMING SOON' : registrationEnded ? 'EVENT ENDED' : 'REGISTER NOW'}
+                  </button>
+                  <p className={`text-center text-[9px] font-bold uppercase tracking-[0.1em] md:tracking-[0.2em] ${registrationEnded || isSoldOut ? 'text-pink' : registrationUpcoming ? 'text-primary' : slotsLeft <= 5 ? 'text-pink animate-pulse' : 'text-gray-500'}`}>
+                    {registrationUpcoming
+                      ? `Registration opens on ${formatDateLabel(tournament.registration_start_date)}`
+                      : registrationEnded
+                        ? 'Registration Closed: Event Ended'
+                        : isSoldOut
+                          ? 'Registration Closed'
+                          : `${slotsLeft} sectors remaining`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            
           </div>
         </div>
       </div>
