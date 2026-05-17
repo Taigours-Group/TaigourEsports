@@ -409,22 +409,22 @@ const AdminPanel = ({
   };
 
   return (
-    <div className="pt-24 pb-24 min-h-screen bg-bg-dark font-rajdhani">
-      <div className="container mx-auto px-4">
+    <div className="pt-20 md:pt-24 pb-20 md:pb-24 min-h-screen bg-bg-dark font-rajdhani">
+      <div className="container mx-auto px-3 md:px-4">
         {/* Admin Header */}
-        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 bg-bg-card p-6 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 md:mb-12 gap-4 md:gap-6 bg-bg-card p-4 md:p-6 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse"></div>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center border border-primary/30">
-              <i className="fa-solid fa-shield-halved text-primary text-xl"></i>
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/20 rounded-lg flex items-center justify-center border border-primary/30 flex-shrink-0">
+              <i className="fa-solid fa-shield-halved text-primary text-lg md:text-xl"></i>
             </div>
-            <div>
-              <h1 className="text-2xl font-orbitron font-black text-white tracking-tighter uppercase">Command <span className="text-primary">Center</span></h1>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.4em]">Auth Level: Supreme Administrator</p>
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-2xl font-orbitron font-black text-white tracking-tighter uppercase">Command <span className="text-primary">Center</span></h1>
+              <p className="text-[8px] md:text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] md:tracking-[0.4em] truncate">Auth Level: Supreme Administrator</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
             {[
               { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' },
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
@@ -433,50 +433,50 @@ const AdminPanel = ({
               { id: 'registrations', label: 'Personnel', icon: 'fa-users' },
               { id: 'logs', label: 'Logs', icon: 'fa-list-ul' }
             ].map(tab => (
-              <button 
+              <button
                 key={tab.id}
                 onClick={() => { setActiveView(tab.id); resetForms(); }}
-                className={`px-5 py-2.5 rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 border ${activeView === tab.id ? 'bg-primary text-dark border-primary shadow-[0_0_15px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'}`}
+                className={`px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-orbitron font-black text-[8px] md:text-[10px] uppercase tracking-widest transition-all flex items-center gap-1 md:gap-2 border flex-shrink-0 ${activeView === tab.id ? 'bg-primary text-dark border-primary shadow-[0_0_15px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'}`}
               >
-                <i className={`fa-solid ${tab.icon}`}></i> {tab.label}
+                <i className={`fa-solid ${tab.icon}`}></i> <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+          <div className="lg:col-span-7 xl:col-span-8 space-y-6 md:space-y-8 min-w-0">
             {activeView === 'dashboard' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 animate-fade-in">
-                <div className="bg-bg-card p-8 rounded-2xl border border-white/5 relative overflow-hidden group">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-fade-in">
+                <div className="bg-bg-card p-6 md:p-8 rounded-2xl border border-white/5 relative overflow-hidden group">
                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <i className="fa-solid fa-users text-8xl"></i>
+                    <i className="fa-solid fa-users text-6xl md:text-8xl"></i>
                   </div>
-                  <div className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-2">Personnel Enlisted</div>
-                  <div className="text-5xl font-orbitron font-black text-white">{stats.totalPlayers}</div>
-                  <div className="mt-4 text-[10px] text-tertiary font-bold uppercase tracking-widest">Active Database Records</div>
+                  <div className="text-gray-500 font-bold text-[9px] md:text-xs uppercase tracking-widest mb-2">Personnel Enlisted</div>
+                  <div className="text-4xl md:text-5xl font-orbitron font-black text-white">{stats.totalPlayers}</div>
+                  <div className="mt-4 text-[9px] md:text-[10px] text-tertiary font-bold uppercase tracking-widest">Active Database Records</div>
                 </div>
-                <div className="bg-bg-card p-8 rounded-2xl border border-white/5 relative overflow-hidden group">
+                <div className="bg-bg-card p-6 md:p-8 rounded-2xl border border-white/5 relative overflow-hidden group">
                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <i className="fa-solid fa-trophy text-8xl"></i>
+                    <i className="fa-solid fa-trophy text-6xl md:text-8xl"></i>
                   </div>
-                  <div className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-2">Total Prize Vault</div>
-                  <div className="text-5xl font-orbitron font-black text-primary">रु {stats.totalPrize.toLocaleString()}</div>
-                  <div className="mt-4 text-[10px] text-primary font-bold uppercase tracking-widest">Combat Rewards Assigned</div>
+                  <div className="text-gray-500 font-bold text-[9px] md:text-xs uppercase tracking-widest mb-2">Total Prize Vault</div>
+                  <div className="text-4xl md:text-5xl font-orbitron font-black text-primary">रु {stats.totalPrize.toLocaleString()}</div>
+                  <div className="mt-4 text-[9px] md:text-[10px] text-primary font-bold uppercase tracking-widest">Combat Rewards Assigned</div>
                 </div>
-                <div className="bg-bg-card p-8 rounded-2xl border border-white/5 relative overflow-hidden group">
+                <div className="bg-bg-card p-6 md:p-8 rounded-2xl border border-white/5 relative overflow-hidden group sm:col-span-2 lg:col-span-1">
                   <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <i className="fa-solid fa-satellite-dish text-8xl"></i>
+                    <i className="fa-solid fa-satellite-dish text-6xl md:text-8xl"></i>
                   </div>
-                  <div className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-2">Active Arenas</div>
-                  <div className="text-5xl font-orbitron font-black text-pink">{stats.activeTourneys}</div>
-                  <div className="mt-4 text-[10px] text-pink font-bold uppercase tracking-widest">Sectors Operational</div>
+                  <div className="text-gray-500 font-bold text-[9px] md:text-xs uppercase tracking-widest mb-2">Active Arenas</div>
+                  <div className="text-4xl md:text-5xl font-orbitron font-black text-pink">{stats.activeTourneys}</div>
+                  <div className="mt-4 text-[9px] md:text-[10px] text-pink font-bold uppercase tracking-widest">Sectors Operational</div>
                 </div>
 
-                <div className="sm:col-span-3 bg-bg-card p-8 rounded-2xl border border-white/5">
-                  <h3 className="text-xl font-orbitron font-black text-white mb-6 uppercase tracking-widest">Global Matrix Backup</h3>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <button 
+                <div className="sm:col-span-2 lg:col-span-3 bg-bg-card p-6 md:p-8 rounded-2xl border border-white/5">
+                  <h3 className="text-lg md:text-xl font-orbitron font-black text-white mb-4 md:mb-6 uppercase tracking-widest">Global Matrix Backup</h3>
+                  <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                    <button
                       onClick={() => {
                         const blob = new Blob([JSON.stringify({ tournaments, leaderboard, streams, registrations })], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
@@ -485,14 +485,14 @@ const AdminPanel = ({
                         a.download = `nexus_sector_state_${new Date().toISOString().split('T')[0]}.json`;
                         a.click();
                       }}
-                      className="flex-1 py-4 glass border border-primary/20 text-primary font-orbitron font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-dark transition-all"
+                      className="flex-1 py-3 md:py-4 glass border border-primary/20 text-primary font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-primary hover:text-dark transition-all"
                     >
-                      DOWNLOAD STATE <i className="fa-solid fa-download ml-2"></i>
+                      DOWNLOAD STATE <i className="fa-solid fa-download ml-2 hidden sm:inline"></i>
                     </button>
                     <label className="flex-1">
-                      <input 
-                        type="file" 
-                        className="hidden" 
+                      <input
+                        type="file"
+                        className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
@@ -507,8 +507,8 @@ const AdminPanel = ({
                           reader.readAsText(file);
                         }}
                       />
-                      <div className="h-full py-4 glass border border-pink/20 text-pink font-orbitron font-black text-xs uppercase tracking-widest hover:bg-pink hover:text-white transition-all text-center cursor-pointer flex items-center justify-center gap-2">
-                        RESTORE STATE <i className="fa-solid fa-upload"></i>
+                      <div className="h-full py-3 md:py-4 glass border border-pink/20 text-pink font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-pink hover:text-white transition-all text-center cursor-pointer flex items-center justify-center gap-2">
+                        RESTORE STATE <i className="fa-solid fa-upload hidden sm:inline"></i>
                       </div>
                     </label>
                   </div>
@@ -518,33 +518,33 @@ const AdminPanel = ({
 
             {activeView !== 'dashboard' && activeView !== 'logs' && (
               <div className="bg-bg-card rounded-2xl border border-white/5 overflow-hidden animate-fade-in shadow-2xl">
-                <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
-                   <div className="relative w-full sm:w-auto flex-grow">
+                <div className="p-4 md:p-6 border-b border-white/5 flex flex-col gap-4">
+                   <div className="relative w-full flex-grow">
                       <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder={`Search nexus ${activeView}...`}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white font-medium focus:border-primary outline-none transition-all placeholder:text-gray-700"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white font-medium focus:border-primary outline-none transition-all placeholder:text-gray-700 text-sm"
                       />
                    </div>
-                   <div className="flex gap-2">
+                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-wrap">
                       {activeView === 'registrations' && (
                         <button
                           onClick={refreshRegistrations}
                           disabled={isRefreshingRegistrations}
-                          className={`px-4 py-2 rounded-lg text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all border ${isRefreshingRegistrations ? 'bg-white/10 text-gray-400 border-white/10 cursor-not-allowed' : 'bg-tertiary/20 text-tertiary border-tertiary/30 hover:bg-tertiary hover:text-dark'}`}
+                          className={`px-3 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all border flex-shrink-0 ${isRefreshingRegistrations ? 'bg-white/10 text-gray-400 border-white/10 cursor-not-allowed' : 'bg-tertiary/20 text-tertiary border-tertiary/30 hover:bg-tertiary hover:text-dark'}`}
                         >
                           <i className={`fa-solid ${isRefreshingRegistrations ? 'fa-spinner fa-spin' : 'fa-rotate-right'} mr-1`}></i>
                           {isRefreshingRegistrations ? 'Refreshing...' : 'Refresh'}
                         </button>
                       )}
                       {['all', 'freefire', 'pubg', 'ludo'].map(g => (
-                        <button 
+                        <button
                           key={g}
                           onClick={() => setFilterGame(g)}
-                          className={`px-4 py-2 rounded-lg text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all ${filterGame === g ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-500 border border-transparent hover:border-white/20'}`}
+                          className={`px-3 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all flex-shrink-0 ${filterGame === g ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-500 border border-transparent hover:border-white/20'}`}
                         >
                           {g}
                         </button>
@@ -552,45 +552,64 @@ const AdminPanel = ({
                    </div>
                 </div>
 
+                {activeView === 'registrations' && (
+                  <div className="p-4 md:p-6 bg-white/2 border-b border-white/5 grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+                    <div className="bg-white/5 p-3 md:p-4 rounded-xl border border-white/10">
+                      <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Registrations</div>
+                      <div className="text-2xl md:text-3xl font-orbitron font-black text-primary">{registrations.length}</div>
+                    </div>
+                    <div className="bg-white/5 p-3 md:p-4 rounded-xl border border-white/10">
+                      <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">After Filters</div>
+                      <div className="text-2xl md:text-3xl font-orbitron font-black text-tertiary">{filteredList.length}</div>
+                    </div>
+                    {(search || filterGame !== 'all') && (
+                      <div className="bg-white/5 p-3 md:p-4 rounded-xl border border-white/10">
+                        <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Hidden Records</div>
+                        <div className="text-2xl md:text-3xl font-orbitron font-black text-gray-400">{registrations.length - filteredList.length}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left">
+                  <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="bg-white/2 text-[10px] font-orbitron text-gray-500 uppercase tracking-widest">
-                        <th className="p-6">Nexus Entity</th>
-                        <th className="p-6">Sector Metadata</th>
-                        <th className="p-6 text-right">Operational Actions</th>
+                      <tr className="bg-white/2 text-[9px] md:text-[10px] font-orbitron text-gray-500 uppercase tracking-widest">
+                        <th className="p-4 md:p-6">Nexus Entity</th>
+                        <th className="p-4 md:p-6">Sector Metadata</th>
+                        <th className="p-4 md:p-6 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {filteredList.map((item) => (
                         <tr key={item.id} className="hover:bg-white/2 transition-colors">
-                          <td className="p-6">
-                             <div className="flex items-center gap-4">
+                          <td className="p-4 md:p-6">
+                             <div className="flex items-center gap-2 md:gap-4">
                                {item.image || item.avatar ? (
-                                 <img src={item.image || item.avatar} className="w-12 h-12 rounded-lg object-cover border border-white/10" alt="" />
+                                 <img src={item.image || item.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" alt="" />
                                ) : (
-                                 <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10">
+                                 <div className="w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 flex-shrink-0">
                                    <i className="fa-solid fa-id-badge text-gray-700"></i>
                                  </div>
                                )}
-                               <div>
-                                 <div className="text-white font-bold text-base line-clamp-1">{item.title || item.teamname || item.playername}</div>
-                                 <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                               <div className="min-w-0">
+                                 <div className="text-white font-bold text-sm md:text-base line-clamp-1">{item.title || item.teamname || item.playername}</div>
+                                 <div className="text-gray-500 text-[8px] md:text-[10px] font-bold uppercase tracking-widest truncate">
                                    {item.game || item.type || (activeView === 'registrations' ? `Sector: ${item.tournamenttitle}` : 'System Data')}
                                  </div>
                                </div>
                              </div>
                           </td>
-                          <td className="p-6">
-                             <div className="text-xs space-y-1">
+                          <td className="p-4 md:p-6">
+                             <div className="text-[8px] md:text-xs space-y-0.5 md:space-y-1">
                                {item.prize && <div className="text-primary font-bold">Reward: {item.prize}</div>}
                                {item.maxSlots && <div className="text-gray-400">Slots: {item.max_slots}</div>}
                                {activeView === 'leaderboard' && <div className="text-accent font-bold">Rank: {item.rank || '-'} | Points: {item.points || 0} | K: {item.kills || 0} | W: {item.wins || 0}</div>}
                                {item.date && <div className="text-gray-400">Deploy: {item.date}</div>}
                               {item.gameuid && (
-                                 <div className="space-y-1">
+                                 <div className="space-y-0.5">
                                    <div className="text-white font-bold">UID: {item.gameuid}</div>
-                                   <div className="text-gray-500 text-[9px] truncate max-w-[150px]">{item.playeremail}</div>
+                                   <div className="text-gray-500 text-[7px] md:text-[9px] truncate max-w-[150px]">{item.playeremail}</div>
                                  </div>
                                )}
                               {item.youtubeid && <div className="text-accent font-bold flex items-center gap-1"><i className="fab fa-youtube"></i> {item.youtubeid}</div>}
@@ -598,7 +617,7 @@ const AdminPanel = ({
                                 <div className={`font-bold flex items-center gap-1 ${isSmsSent(item) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
                                   <i className={`fa-solid ${isSmsSent(item) ? 'fa-circle-check' : 'fa-signal'}`}></i>
                                   SMS: {isSmsSent(item) ? 'SENT' : 'PENDING'}
-                                </div> 
+                                </div>
                               )}
                               {activeView === 'registrations' && (
                                 <div className="text-gray-300">
@@ -612,33 +631,33 @@ const AdminPanel = ({
                               )}
                              </div>
                           </td>
-                          <td className="p-6 text-right">
-                             <div className="flex justify-end gap-2">
+                          <td className="p-4 md:p-6 text-right">
+                             <div className="flex justify-end gap-1 md:gap-2">
                                {activeView === 'tournaments' && (
-                                 <button 
+                                 <button
                                    onClick={() => { setActiveView('registrations'); setSearch(item.title); }}
-                                   title="View Enlistments" 
-                                   className="w-10 h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary hover:text-dark transition-all"
+                                   title="View Enlistments"
+                                   className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary hover:text-dark transition-all flex-shrink-0"
                                  >
-                                   <i className="fa-solid fa-users-viewfinder text-sm"></i>
+                                   <i className="fa-solid fa-users-viewfinder text-xs md:text-sm"></i>
                                  </button>
                                )}
                                {activeView === 'registrations' && (
-                                 <button 
+                                 <button
                                    onClick={() => setViewingReg(item)}
-                                   title="View Dossier" 
-                                   className="w-10 h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all"
+                                   title="View Dossier"
+                                   className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all flex-shrink-0"
                                  >
-                                   <i className="fa-solid fa-address-card text-sm"></i>
+                                   <i className="fa-solid fa-address-card text-xs md:text-sm"></i>
                                  </button>
                                )}
                                {activeView !== 'registrations' && (
-                                 <button onClick={() => startEdit(item)} className="w-10 h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all">
-                                   <i className="fa-solid fa-pen-to-square text-sm"></i>
+                                 <button onClick={() => startEdit(item)} className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all flex-shrink-0">
+                                   <i className="fa-solid fa-pen-to-square text-xs md:text-sm"></i>
                                  </button>
                                )}
-                               <button onClick={() => handleDelete(item.id)} className="w-10 h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-pink hover:bg-pink hover:text-white transition-all">
-                                 <i className="fa-solid fa-trash-can text-sm"></i>
+                               <button onClick={() => handleDelete(item.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-pink hover:bg-pink hover:text-white transition-all flex-shrink-0">
+                                 <i className="fa-solid fa-trash-can text-xs md:text-sm"></i>
                                </button>
                              </div>
                           </td>
@@ -651,9 +670,9 @@ const AdminPanel = ({
             )}
 
             {activeView === 'logs' && (
-               <div className="bg-bg-card rounded-2xl border border-white/5 p-8 animate-fade-in shadow-2xl">
-                 <h3 className="text-xl font-orbitron font-black text-white uppercase tracking-widest mb-8">Nexus System Logs</h3>
-                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar font-mono text-[10px]">
+               <div className="bg-bg-card rounded-2xl border border-white/5 p-4 md:p-8 animate-fade-in shadow-2xl">
+                 <h3 className="text-lg md:text-xl font-orbitron font-black text-white uppercase tracking-widest mb-6">Nexus System Logs</h3>
+                 <div className="space-y-2 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-4 custom-scrollbar font-mono text-[9px] md:text-[10px]">
                     {systemLogs.length === 0 && (
                       <div className="p-4 bg-white/2 border border-white/5 rounded-lg text-gray-500 uppercase tracking-widest text-center">
                         No logs available yet
@@ -665,13 +684,13 @@ const AdminPanel = ({
                       const logEndpoint = log.endpoint || log.path || log.route || 'Unknown endpoint';
 
                       return (
-                        <div key={log.id} className="p-4 bg-white/2 border-l-4 border-primary/40 rounded-r-lg flex justify-between group hover:bg-white/5 transition-all">
-                          <div className="flex items-center gap-4">
-                             <span className="text-gray-600">[{logTimestamp}]</span>
-                             <span className={`font-black uppercase tracking-wider ${logMethod === 'POST' ? 'text-tertiary' : logMethod === 'PUT' ? 'text-primary' : 'text-accent'}`}>{logMethod}</span>
-                             <span className="text-white">{logEndpoint}</span>
+                        <div key={log.id} className="p-3 md:p-4 bg-white/2 border-l-4 border-primary/40 rounded-r-lg flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-4 group hover:bg-white/5 transition-all">
+                          <div className="flex flex-col gap-1 md:gap-0 md:flex-row md:items-center md:gap-4 min-w-0">
+                             <span className="text-gray-600 truncate">[{logTimestamp}]</span>
+                             <span className={`font-black uppercase tracking-wider flex-shrink-0 ${logMethod === 'POST' ? 'text-tertiary' : logMethod === 'PUT' ? 'text-primary' : 'text-accent'}`}>{logMethod}</span>
+                             <span className="text-white truncate">{logEndpoint}</span>
                           </div>
-                          <span className="text-tertiary font-bold">200_OK</span>
+                          <span className="text-tertiary font-bold flex-shrink-0">200_OK</span>
                         </div>
                       );
                     })}
@@ -682,23 +701,23 @@ const AdminPanel = ({
 
           <div className="lg:col-span-5 xl:col-span-4">
             {['tournaments', 'leaderboard', 'streams'].includes(activeView) && (
-              <div className="bg-bg-card p-8 rounded-2xl border border-primary/20 sticky top-24 shadow-2xl animate-fade-in max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-orbitron font-black text-white uppercase tracking-widest">
+              <div className="bg-bg-card p-6 md:p-8 rounded-2xl border border-primary/20 lg:sticky lg:top-24 shadow-2xl animate-fade-in max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between mb-6 md:mb-8 gap-4">
+                  <h2 className="text-lg md:text-xl font-orbitron font-black text-white uppercase tracking-widest">
                     {editingId ? 'Modify Record' : 'Create Record'}
                   </h2>
                   {editingId && (
-                    <button onClick={resetForms} className="text-pink font-bold text-[10px] uppercase hover:underline tracking-widest">ABORT EDIT</button>
+                    <button onClick={resetForms} className="text-pink font-bold text-[9px] md:text-[10px] uppercase hover:underline tracking-widest flex-shrink-0">ABORT EDIT</button>
                   )}
                 </div>
 
                 {activeView === 'tournaments' && (
-                  <form onSubmit={handleSaveTournament} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={handleSaveTournament} className="space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Game</label>
-                          <select 
-                            className="w-full bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[10px] font-bold uppercase"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Game</label>
+                          <select
+                            className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
                             value={tourneyForm.type}
                             onChange={e => setTourneyForm({...tourneyForm, type: e.target.value})}
                           >
@@ -708,22 +727,22 @@ const AdminPanel = ({
                           </select>
                        </div>
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Max Slots</label>
-                          <input 
-                            type="number" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Max Slots</label>
+                          <input
+                            type="number"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={tourneyForm.max_slots}
                             onChange={e => setTourneyForm({...tourneyForm, max_slots: parseInt(e.target.value) || 0})}
                           />
                        </div>
                     </div>
-                    
+
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Operational Title</label>
-                        <input 
-                          type="text" 
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Operational Title</label>
+                        <input
+                          type="text"
                           required
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
                           placeholder="Mission Name..."
                           value={tourneyForm.title}
                           onChange={e => setTourneyForm({...tourneyForm, title: e.target.value})}
@@ -731,32 +750,32 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tournament Banner URL</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[10px] mb-2 font-mono"
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tournament Banner URL</label>
+                        <input
+                          type="text"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] mb-2 font-mono"
                           placeholder="https://image-link.com/banner.jpg"
                           value={tourneyForm.image}
                           onChange={e => setTourneyForm({...tourneyForm, image: e.target.value})}
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Mission Date</label>
-                          <input 
-                            type="date" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Mission Date</label>
+                          <input
+                            type="date"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             placeholder="Dec 15, 2025"
                             value={tourneyForm.date}
                             onChange={e => setTourneyForm({...tourneyForm, date: e.target.value})}
                           />
                        </div>
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time (PST/NST)</label>
-                          <input 
-                            type="text" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time (PST/NST)</label>
+                          <input
+                            type="text"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             placeholder="07:00 PM"
                             value={tourneyForm.time}
                             onChange={e => setTourneyForm({...tourneyForm, time: e.target.value})}
@@ -764,21 +783,21 @@ const AdminPanel = ({
                        </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Registration Start Date</label>
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reg Start Date</label>
                           <input
                             type="date"
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={tourneyForm.registration_start_date || ''}
                             onChange={e => setTourneyForm({ ...tourneyForm, registration_start_date: e.target.value })}
                           />
                        </div>
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Registration End Date</label>
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reg End Date</label>
                           <input
                             type="date"
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={tourneyForm.registration_end_date || ''}
                             onChange={e => setTourneyForm({ ...tourneyForm, registration_end_date: e.target.value })}
                           />
@@ -786,10 +805,10 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Location</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Location</label>
+                        <input
+                          type="text"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                           placeholder="Nepal / Bermuda"
                           value={tourneyForm.location}
                           onChange={e => setTourneyForm({...tourneyForm, location: e.target.value})}
@@ -797,31 +816,31 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Intel (Description)</label>
-                        <textarea 
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Intel (Description)</label>
+                        <textarea
                           rows={2}
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-rajdhani"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-rajdhani"
                           placeholder="Mission Briefing..."
                           value={tourneyForm.description}
                           onChange={e => setTourneyForm({...tourneyForm, description: e.target.value})}
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total Prize</label>
-                          <input 
-                            type="text" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total Prize</label>
+                          <input
+                            type="text"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={tourneyForm.prize}
                             onChange={e => setTourneyForm({...tourneyForm, prize: e.target.value})}
                           />
                        </div>
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Entry Fee</label>
-                          <input 
-                            type="text" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Entry Fee</label>
+                          <input
+                            type="text"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={tourneyForm.entry_fee}
                             onChange={e => setTourneyForm({...tourneyForm, entry_fee: e.target.value})}
                           />
@@ -829,10 +848,10 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">External Registration URL</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">External Registration URL</label>
+                        <input
+                          type="text"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
                           placeholder="https://docs.google.com/..."
                           value={tourneyForm.registration_url}
                           onChange={e => setTourneyForm({...tourneyForm, registration_url: e.target.value})}
@@ -840,10 +859,10 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Primary Stream ID</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Primary Stream ID</label>
+                        <input
+                          type="text"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
                           placeholder="YouTube Video ID"
                           value={tourneyForm.stream_id}
                           onChange={e => setTourneyForm({...tourneyForm, stream_id: e.target.value})}
@@ -851,23 +870,23 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                       <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Prize Breakdown</label>
+                       <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Prize Breakdown</label>
                        {(tourneyForm.prize_breakdown || []).map((row, idx) => (
                          <div key={idx} className="flex gap-2 mb-2 group/row">
-                           <input 
+                           <input
                              placeholder="Position"
-                             className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[10px] text-white outline-none focus:border-primary"
+                             className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[9px] md:text-[10px] text-white outline-none focus:border-primary"
                              value={row.position}
                              onChange={(e) => updatePrizeBreakdown(idx, 'position', e.target.value)}
                            />
-                           <input 
+                           <input
                              placeholder="Reward"
-                             className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[10px] text-white outline-none focus:border-primary"
+                             className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[9px] md:text-[10px] text-white outline-none focus:border-primary"
                              value={row.reward}
                              onChange={(e) => updatePrizeBreakdown(idx, 'reward', e.target.value)}
                            />
-                           <button 
-                             type="button" 
+                           <button
+                             type="button"
                              onClick={() => removePrizeRow(idx)}
                              className="text-pink hover:text-white transition-colors px-2"
                            >
@@ -875,32 +894,32 @@ const AdminPanel = ({
                            </button>
                          </div>
                        ))}
-                       <button type="button" onClick={addPrizeRow} className="text-[8px] text-primary uppercase font-bold hover:underline tracking-widest">+ Add Reward Tier</button>
+                       <button type="button" onClick={addPrizeRow} className="text-[8px] md:text-[9px] text-primary uppercase font-bold hover:underline tracking-widest">+ Add Reward Tier</button>
                     </div>
 
                     <div className="space-y-1">
-                       <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Deployment Rules (One per line)</label>
-                       <textarea 
+                       <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Deployment Rules (One per line)</label>
+                       <textarea
                          rows={3}
-                         className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs custom-scrollbar"
+                         className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs custom-scrollbar"
                          value={tourneyForm.rules?.join('\n')}
                          onChange={e => setTourneyForm({...tourneyForm, rules: e.target.value.split('\n')})}
                        />
                     </div>
 
-                    <button type="submit" className="w-full py-5 bg-primary text-dark font-orbitron font-black text-sm uppercase tracking-[0.3em] cyber-button shadow-[0_0_20px_rgba(0,212,255,0.2)]">
-                      {editingId ? 'COMMIT MISSION UPDATES' : 'DEPLOY NEW SECTOR'}
+                    <button type="submit" className="w-full py-4 md:py-5 bg-primary text-dark font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.3em] cyber-button shadow-[0_0_20px_rgba(0,212,255,0.2)]">
+                      {editingId ? 'COMMIT UPDATES' : 'DEPLOY SECTOR'}
                     </button>
                   </form>
                 )}
 
                 {activeView === 'leaderboard' && (
-                  <form onSubmit={handleSaveLeaderboard} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={handleSaveLeaderboard} className="space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Target Game</label>
-                            <select 
-                                className="w-full bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[10px] font-bold uppercase"
+                            <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Target Game</label>
+                            <select
+                                className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
                                 value={lbForm.game}
                                 onChange={e => setLbForm({...lbForm, game: e.target.value})}
                             >
@@ -910,11 +929,11 @@ const AdminPanel = ({
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Squad Identity</label>
-                            <input 
-                                type="text" 
+                            <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Squad Identity</label>
+                            <input
+                                type="text"
                                 required
-                                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
+                                className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
                                 placeholder="Team Name..."
                                 value={lbForm.teamname}
                                 onChange={e => setLbForm({...lbForm, teamname: e.target.value})}
@@ -923,106 +942,109 @@ const AdminPanel = ({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Player Image / Avatar URL</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[10px] mb-2 font-mono"
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Player Image / Avatar URL</label>
+                        <input
+                          type="text"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] mb-2 font-mono"
                           placeholder="https://i.pravatar.cc/150?u=team"
                           value={lbForm.avatar}
                           onChange={e => setLbForm({...lbForm, avatar: e.target.value})}
                         />
                         {lbForm.avatar && (
                           <div className="flex justify-center">
-                            <img src={lbForm.avatar} className="w-16 h-16 rounded-lg border border-white/10 object-cover" alt="Avatar Preview" />
+                            <img src={lbForm.avatar} className="w-14 h-14 md:w-16 md:h-16 rounded-lg border border-white/10 object-cover" alt="Avatar Preview" />
                           </div>
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rank</label>
-                          <input 
-                            type="number" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rank</label>
+                          <input
+                            type="number"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={lbForm.rank === 0 ? '' : lbForm.rank}
                             onChange={e => setLbForm({...lbForm, rank: parseInt(e.target.value) || 0})}
                           />
                        </div>
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Neutralized</label>
-                          <input 
-                            type="number" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Neutralized</label>
+                          <input
+                            type="number"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={lbForm.kills}
                             onChange={e => setLbForm({...lbForm, kills: parseInt(e.target.value) || 0})}
                           />
                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Wins</label>
-                          <input 
-                            type="number" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Wins</label>
+                          <input
+                            type="number"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={lbForm.wins}
                             onChange={e => setLbForm({...lbForm, wins: parseInt(e.target.value) || 0})}
                           />
                        </div>
                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total XP</label>
-                          <input 
-                            type="number" 
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total XP</label>
+                          <input
+                            type="number"
+                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                             value={lbForm.points}
                             onChange={e => setLbForm({...lbForm, points: parseInt(e.target.value) || 0})}
                           />
                        </div>
                     </div>
 
-                    <button type="submit" className="w-full py-5 bg-primary text-dark font-orbitron font-black text-sm uppercase tracking-[0.3em] cyber-button">
-                       {editingId ? 'UPDATE RANKING ARCHIVE' : 'INITIALIZE RANKING'}
+                    <button type="submit" className="w-full py-4 md:py-5 bg-primary text-dark font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.3em] cyber-button">
+                       {editingId ? 'UPDATE RANKING' : 'INITIALIZE RANKING'}
                     </button>
                   </form>
                 )}
 
                 {activeView === 'streams' && (
-                  <form onSubmit={handleSaveStream} className="space-y-6">
+                  <form onSubmit={handleSaveStream} className="space-y-4 md:space-y-6">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Feed Title</label>
-                        <input 
-                          type="text" 
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Feed Title</label>
+                        <input
+                          type="text"
                           required
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                           placeholder="LIVE: Nexus Finals..."
                           value={streamForm.title}
                           onChange={e => setStreamForm({...streamForm, title: e.target.value})}
                         />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">YouTube ID or Full Link</label>
-                        <input 
-                          type="text" 
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">YouTube ID or Full Link</label>
+                        <input
+                          type="text"
                           required
-                          className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
                           placeholder="e.g. bCcaErhe8as or full URL"
                           value={streamForm.youtubeid}
                           onChange={e => setStreamForm({...streamForm, youtubeid: e.target.value})}
                         />
                     </div>
-                    <div className="flex items-center gap-4 p-4 glass rounded-xl border border-white/5">
+                    <div className="flex items-center gap-4 p-3 md:p-4 glass rounded-xl border border-white/5">
                         <div className="flex-grow">
                            <div className="text-white font-bold text-xs uppercase tracking-widest">Deployment Status</div>
-                           <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest">{streamForm.islive ? 'Online Broadcast' : 'Archived Feed'}</div>
+                           <div className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest">{streamForm.islive ? 'Online Broadcast' : 'Archived Feed'}</div>
                         </div>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => setStreamForm({...streamForm, islive: !streamForm.islive})}
-                          className={`w-14 h-8 rounded-full transition-all relative ${streamForm.islive ? 'bg-tertiary shadow-[0_0_10px_#00ff80]' : 'bg-gray-800'}`}
+                          className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${streamForm.islive ? 'bg-tertiary shadow-[0_0_10px_#00ff80]' : 'bg-gray-800'}`}
                         >
                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${streamForm.islive ? 'left-7' : 'left-1'}`}></div>
                         </button>
                     </div>
 
-                    <button type="submit" className="w-full py-5 bg-primary text-dark font-orbitron font-black text-sm uppercase tracking-[0.3em] cyber-button">
-                       {editingId ? 'UPDATE BROADCAST UPLINK' : 'ESTABLISH FEED'}
+                    <button type="submit" className="w-full py-4 md:py-5 bg-primary text-dark font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.3em] cyber-button">
+                       {editingId ? 'UPDATE BROADCAST' : 'ESTABLISH FEED'}
                     </button>
                   </form>
                 )}
@@ -1036,52 +1058,52 @@ const AdminPanel = ({
       {viewingReg && (
         <div className="fixed inset-0 z-[2000] flex items-start justify-center p-4 overflow-y-auto">
            <div className="absolute inset-0 bg-bg-dark/90 backdrop-blur-md" onClick={() => setViewingReg(null)}></div>
-           <div className="relative w-full max-w-lg bg-bg-card p-8 md:p-12 rounded-2xl border border-primary/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] animate-fade-in my-8">
-              <button onClick={() => setViewingReg(null)} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
-                 <i className="fa-solid fa-xmark text-xl"></i>
+           <div className="relative w-full max-w-lg bg-bg-card p-6 md:p-12 rounded-2xl border border-primary/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] animate-fade-in my-8">
+              <button onClick={() => setViewingReg(null)} className="absolute top-4 md:top-6 right-4 md:right-6 text-gray-500 hover:text-white transition-colors">
+                 <i className="fa-solid fa-xmark text-lg md:text-xl"></i>
               </button>
-              
-              <div className="text-center mb-10">
-                 <div className="w-20 h-20 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fa-solid fa-user-ninja text-3xl text-primary"></i>
+
+              <div className="text-center mb-8 md:mb-10">
+                 <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                    <i className="fa-solid fa-user-ninja text-2xl md:text-3xl text-primary"></i>
                  </div>
-                 <h2 className="text-2xl font-orbitron font-black text-white uppercase tracking-tight">Personnel <span className="text-primary">Dossier</span></h2>
-                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Classification: Confidential</p>
+                 <h2 className="text-xl md:text-2xl font-orbitron font-black text-white uppercase tracking-tight">Personnel <span className="text-primary">Dossier</span></h2>
+                 <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Classification: Confidential</p>
               </div>
 
-              <div className="space-y-6 font-rajdhani">
-                 <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4 md:space-y-6 font-rajdhani">
+                 <div className="grid grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-1">
-                       <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest block">Warrior Alias</span>
-                       <span className="text-white text-lg font-bold">{viewingReg.playername}</span>
+                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Warrior Alias</span>
+                       <span className="text-white text-base md:text-lg font-bold break-words">{viewingReg.playername}</span>
                     </div>
                     <div className="space-y-1">
-                       <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest block">System UID</span>
-                       <span className="text-white text-lg font-mono font-bold">{viewingReg.gameuid}</span>
+                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">System UID</span>
+                       <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.gameuid}</span>
                     </div>
                  </div>
-                 <div className="grid grid-cols-2 gap-6">
+                 <div className="grid grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-1">
-                       <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest block">Player Age</span>
-                       <span className="text-white text-lg font-bold">{viewingReg.Player_Age || viewingReg.playerage || 'N/A'}</span>
+                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Player Age</span>
+                       <span className="text-white text-base md:text-lg font-bold">{viewingReg.Player_Age || viewingReg.playerage || 'N/A'}</span>
                     </div>
                     <div className="space-y-1">
-                       <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest block">Promo Code</span>
-                       <span className="text-white text-lg font-mono font-bold">{viewingReg.Promo_Code || viewingReg.promocode || 'N/A'}</span>
+                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Promo Code</span>
+                       <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.Promo_Code || viewingReg.promocode || 'N/A'}</span>
                     </div>
                  </div>
 
-                 <div className="p-4 bg-white/2 border border-white/5 rounded-xl space-y-4">
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Comm-Link</span>
-                       <span className="text-primary font-bold">{viewingReg.playeremail}</span>
+                 <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Comm-Link</span>
+                       <span className="text-primary font-bold text-sm break-all">{viewingReg.playeremail}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">WhatsApp Uplink</span>
-                       <span className="text-accent font-bold">{viewingReg.playercontact}</span>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">WhatsApp Uplink</span>
+                       <span className="text-accent font-bold text-sm break-all">{viewingReg.playercontact}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">SMS Signal</span>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">SMS Signal</span>
                        <span className={`font-bold flex items-center gap-2 ${isSmsSent(viewingReg) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
                           <i className={`fa-solid ${isSmsSent(viewingReg) ? 'fa-circle-check' : 'fa-signal'}`}></i>
                           {isSmsSent(viewingReg) ? 'SENT' : 'PENDING'}
@@ -1089,37 +1111,37 @@ const AdminPanel = ({
                     </div>
                  </div>
 
-                 <div className="p-4 bg-white/2 border border-white/5 rounded-xl space-y-4">
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Assigned Arena</span>
-                       <span className="text-white font-bold">{viewingReg.tournamenttitle}</span>
+                 <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Assigned Arena</span>
+                       <span className="text-white font-bold text-sm break-words">{viewingReg.tournamenttitle}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Enlistment Date</span>
-                       <span className="text-gray-400">{new Date(viewingReg.registrationdate).toLocaleString()}</span>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Enlistment Date</span>
+                       <span className="text-gray-400 text-sm break-words">{new Date(viewingReg.registrationdate).toLocaleString()}</span>
                     </div>
                  </div>
               </div>
 
-              <div className="mt-10">
+              <div className="mt-8 md:mt-10">
                  {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] && (
-                   <div className="mb-3 text-[10px] text-[#25D366] font-orbitron font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                   <div className="mb-3 text-[9px] md:text-[10px] text-[#25D366] font-orbitron font-black uppercase tracking-widest flex items-center justify-center gap-2">
                       <i className="fa-solid fa-circle-check"></i>
                       MESSAGE MARKED AS SENT
                    </div>
                  )}
-                 <div className="flex gap-3 mb-3">
+                 <div className="flex flex-col gap-3 mb-3">
                    <button
                      onClick={() => sendRegistrationWhatsApp(viewingReg)}
-                     className={`flex-1 py-4 text-white font-orbitron font-black text-[10px] md:text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'bg-[#1daa50]' : 'bg-[#25D366] hover:brightness-110'}`}
+                     className={`w-full py-3 md:py-4 text-white font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'bg-[#1daa50]' : 'bg-[#25D366] hover:brightness-110'}`}
                    >
-                      <i className={`${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'fa-solid fa-circle-check' : 'fa-brands fa-whatsapp'} text-sm md:text-base`}></i>
+                      <i className={`${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'fa-solid fa-circle-check' : 'fa-brands fa-whatsapp'} text-base md:text-lg`}></i>
                       {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'WA SENT' : 'WHATSAPP MSG'}
                    </button>
                  </div>
-                 <button 
+                 <button
                    onClick={() => setViewingReg(null)}
-                   className="w-full py-4 bg-primary text-dark font-orbitron font-black text-xs uppercase tracking-widest hover:bg-white transition-all"
+                   className="w-full py-3 md:py-4 bg-primary text-dark font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-white transition-all"
                  >
                     ACKNOWLEDGE
                  </button>

@@ -61,10 +61,11 @@ const Header = () => {
             ))}
           </div>
 
-          
-                  
-                </div>
-
+          {/* Mobile Auth Menu */}
+          <div className="md:hidden flex items-center gap-2">
+            {/* Mobile auth menu would go here if needed */}
+          </div>
+        </div>
       </nav>
 
       <div className="md:hidden fixed bottom-0 left-0 w-full z-[100] bottom-nav-glass mobile-safe-bottom">
