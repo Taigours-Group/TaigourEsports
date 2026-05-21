@@ -78,7 +78,7 @@ const Footer = () => (
           &copy; 2025 Taigour's E-Sports. All rights reserved.
         </p>
         <p className="text-gray-600 text-[10px] md:text-xs">
-          Version 3.4.0 | Developed By: <span className="text-primary font-bold">TigraTech Pvt. Ltd.</span>
+          Version 5.6.1 | Developed By: <a href="https://taigra-nexus-labs.onrender.com" className="text-primary font-bold" target='_blank'>Taigra Nexus Labs Pvt. Ltd. Janakpur, Nepal</a>
         </p>
       </div>
     </div>
