@@ -6,7 +6,7 @@ const OnboardingModal = () => {
   const { user, profile, loading, reloadProfile } = useAuth();
   
   // Show onboarding if there's a user, not loading, and NO profile yet
-  // Or if profile exists but somehow missing age
+  // Or if profile exists but somehow missing age or contact info
   const needsOnboarding = !loading && user && (!profile || !profile.age || !profile.contact_info);
   
   const [formData, setFormData] = useState({
@@ -45,8 +45,14 @@ const OnboardingModal = () => {
     e.preventDefault();
     setError('');
     
-    if (!formData.full_name || !formData.age || !formData.contact_info) {
-      setError('Please fill in all fields');
+    if (!formData.full_name.trim() || !formData.age || !formData.contact_info.trim()) {
+      setError('Please fill in all fields to register your warrior credentials.');
+      return;
+    }
+
+    const ageNum = parseInt(formData.age);
+    if (isNaN(ageNum) || ageNum < 10 || ageNum > 100) {
+      setError('Please enter a valid age between 10 and 100.');
       return;
     }
     
@@ -54,16 +60,16 @@ const OnboardingModal = () => {
     
     const profileData = {
       email: user.email,
-      full_name: formData.full_name,
+      full_name: formData.full_name.trim(),
       avatar_url: user.user_metadata?.avatar_url || '',
-      age: parseInt(formData.age),
-      contact_info: formData.contact_info
+      age: ageNum,
+      contact_info: formData.contact_info.trim()
     };
     
     const { error: submitError } = await authService.createProfile(user.id, profileData);
     
     if (submitError) {
-      setError('Failed to save profile: ' + submitError.message);
+      setError('System Error: ' + submitError.message);
       setSubmitting(false);
     } else {
       await reloadProfile(); // Refresh profile state to hide modal
@@ -71,76 +77,137 @@ const OnboardingModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-      <div className="bg-bg-dark border border-primary/20 rounded-xl p-8 max-w-md w-full shadow-[0_0_30px_rgba(0,212,255,0.1)] relative overflow-hidden">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#000]/85 backdrop-blur-md px-4 animate-fade-in">
+      <div 
+        className="bg-bg-dark border rounded-2xl p-8 max-w-md w-full relative overflow-hidden shadow-2xl"
+        style={{
+          borderColor: 'rgba(0, 212, 255, 0.25)',
+          boxShadow: '0 0 50px rgba(0, 212, 255, 0.15), inset 0 0 20px rgba(0, 212, 255, 0.05)',
+        }}
+      >
+        {/* Futuristic Cyber Top Line */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse-slow"></div>
         
-        {/* Decor */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent"></div>
-        
-        <h2 className="font-orbitron font-bold text-2xl text-white mb-2 uppercase tracking-wide">
-          Complete Profile
-        </h2>
-        <p className="text-gray-400 text-sm mb-6">
-          Welcome! We need a few more details to set up your player profile.
+        {/* Glow Accent */}
+        <div className="absolute -top-12 -left-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* Header Icon */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/30 relative">
+            <i className="fa-solid fa-shield-halved text-primary text-lg animate-pulse"></i>
+            <div className="absolute -inset-0.5 bg-primary/20 blur-md rounded-lg -z-10"></div>
+          </div>
+          <div>
+            <h2 className="font-orbitron font-black text-xl text-white uppercase tracking-wider leading-none">
+              Forge Profile
+            </h2>
+            <p className="text-[10px] font-orbitron font-bold text-primary uppercase tracking-[0.2em] mt-1">
+              Warrior Credentials
+            </p>
+          </div>
+        </div>
+
+        <p className="text-gray-400 font-rajdhani text-sm mb-6 leading-relaxed">
+          Welcome to the Arena. We need a few core details to establish your competitive rank and verify your entry.
         </p>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded mb-4">
-            {error}
+          <div 
+            className="border text-xs font-semibold p-3.5 rounded-lg mb-5 flex items-start gap-2.5 bg-red-950/20 border-red-500/35 text-red-400 animate-slide-up"
+          >
+            <i className="fa-solid fa-triangle-exclamation mt-0.5"></i>
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-primary/80 font-orbitron text-xs uppercase tracking-wider mb-1">
-              Player Name
+            <label className="block text-gray-400 font-orbitron text-[10px] uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <span>Player Name / Gamertag</span>
+              <span className="text-primary">*</span>
             </label>
-            <input
-              type="text"
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              className="w-full bg-black/50 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-              placeholder="Your Gamertag / Name"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                name="full_name"
+                value={formData.full_name}
+                onChange={handleChange}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-white font-rajdhani font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm placeholder:text-gray-600"
+                placeholder="e.g. Neo_Striker"
+                required
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 text-xs">
+                <i className="fa-solid fa-signature"></i>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-primary/80 font-orbitron text-xs uppercase tracking-wider mb-1">
-              Age
-            </label>
-            <input
-              type="number"
-              name="age"
-              value={formData.age}
-              onChange={handleChange}
-              className="w-full bg-black/50 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-              placeholder="Your Age (e.g., 21)"
-              min="10"
-              max="100"
-            />
-          </div>
-
-          <div>
-            <label className="block text-primary/80 font-orbitron text-xs uppercase tracking-wider mb-1">
-              Contact Info (Phone/Discord)
-            </label>
-            <input
-              type="text"
-              name="contact_info"
-              value={formData.contact_info}
-              onChange={handleChange}
-              className="w-full bg-black/50 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-              placeholder="Phone number or Discord tag"
-            />
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-1">
+              <label className="block text-gray-400 font-orbitron text-[10px] uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <span>Age</span>
+                <span className="text-primary">*</span>
+              </label>
+              <input
+                type="number"
+                name="age"
+                value={formData.age}
+                onChange={handleChange}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-white font-rajdhani font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm placeholder:text-gray-600"
+                placeholder="21"
+                min="10"
+                max="100"
+                required
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-gray-400 font-orbitron text-[10px] uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <span>Contact (Discord/WhatsApp)</span>
+                <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="contact_info"
+                  value={formData.contact_info}
+                  onChange={handleChange}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-white font-rajdhani font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm placeholder:text-gray-600"
+                  placeholder="Discord#0000 or Phone"
+                  required
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 text-xs">
+                  <i className="fa-brands fa-discord"></i>
+                </div>
+              </div>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full mt-6 bg-primary/20 border border-primary text-primary font-orbitron font-bold py-3 rounded hover:bg-primary hover:text-bg-dark transition-all duration-300 uppercase tracking-widest disabled:opacity-50"
+            className="w-full mt-6 py-3 px-4 bg-primary text-dark font-orbitron font-black text-xs uppercase tracking-widest transition-all duration-300 relative overflow-hidden group cursor-pointer disabled:opacity-50"
+            style={{
+              clipPath: 'polygon(8% 0, 100% 0, 100% 75%, 92% 100%, 0 100%, 0 25%)',
+              boxShadow: '0 0 20px rgba(0, 212, 255, 0.3)',
+            }}
           >
-            {submitting ? 'Saving...' : 'Enter the Arena'}
+            {/* Hover glare effect */}
+            <span className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+            
+            <span className="flex items-center justify-center gap-2">
+              {submitting ? (
+                <>
+                  <i className="fa-solid fa-spinner animate-spin"></i>
+                  <span>Initializing...</span>
+                </>
+              ) : (
+                <>
+                  <span>ENTER THE ARENA</span>
+                  <i className="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                </>
+              )}
+            </span>
           </button>
         </form>
       </div>

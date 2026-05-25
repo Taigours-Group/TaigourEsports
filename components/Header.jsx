@@ -205,10 +205,21 @@ const Header = () => {
                       <p className="font-orbitron font-bold text-xs text-white truncate">{getUserDisplayName()}</p>
                       <p className="text-[10px] text-gray-500 truncate mt-0.5">{user.email}</p>
                     </div>
-                    <div className="py-1.5">
+                    <div className="py-1 border-b border-white/5">
+                      <Link
+                        to="/profile"
+                        onClick={() => setShowUserMenu(false)}
+                        className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-gray-400 hover:text-primary hover:bg-white/5 transition-all cursor-pointer"
+                        id="profile-button"
+                      >
+                        <i className="fa-solid fa-circle-user text-xs"></i>
+                        <span className="font-orbitron font-bold text-[10px] uppercase tracking-wider">My Profile</span>
+                      </Link>
+                    </div>
+                    <div className="py-1">
                       <button
                         onClick={() => { logout(); setShowUserMenu(false); }}
-                        className="w-full text-left px-4 py-2 flex items-center gap-3 text-gray-400 hover:text-red-400 hover:bg-white/5 transition-all cursor-pointer"
+                        className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-gray-400 hover:text-red-400 hover:bg-white/5 transition-all cursor-pointer"
                         id="logout-button"
                       >
                         <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i>
@@ -263,7 +274,41 @@ const Header = () => {
 
           {/* Mobile Auth Menu */}
           <div className="flex items-center gap-2">
-            {/* Mobile auth menu would go here if needed */}
+            {loading ? (
+              <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin"></div>
+            ) : user ? (
+              <Link to="/profile" className="relative group block">
+                {getUserAvatar() ? (
+                  <img
+                    src={getUserAvatar()}
+                    alt="avatar"
+                    className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/30"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-orbitron font-black text-[10px] text-primary ring-2 ring-primary/30"
+                    style={{ background: 'rgba(0,212,255,0.1)' }}
+                  >
+                    {getUserDisplayName().charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-tertiary rounded-full border-2 border-bg-dark animate-pulse"
+                  style={{ boxShadow: '0 0 6px #00ff80' }}
+                ></span>
+              </Link>
+            ) : (
+              <button
+                onClick={loginWithGoogle}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-300 group cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(0,212,255,0.15) 0%, rgba(0,212,255,0.05) 100%)',
+                  border: '1px solid rgba(0,212,255,0.2)',
+                  boxShadow: '0 0 10px rgba(0,212,255,0.08)',
+                }}
+              >
+                <i className="fa-brands fa-google text-[9px] text-primary"></i>
+                <span className="font-orbitron font-bold text-[8px] text-primary uppercase tracking-widest">Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </nav>

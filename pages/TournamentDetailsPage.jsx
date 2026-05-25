@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { CountdownTimer, FeeTooltip } from './TournamentsPage';
 
 const parseDateAtStartOfDay = (dateValue) => {
@@ -33,6 +34,7 @@ const formatDateLabel = (dateValue) => {
 const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const tournament = tournaments.find(t => t.id === id);
   
   const [activeTab, setActiveTab] = useState('rules');
@@ -45,7 +47,8 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
     playeremail: '',
     playercontact: '',
     gameuid: '',
-    promocode: ''
+    promocode: '',
+    player_id: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,6 +58,20 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Auto-fill form with logged-in user data
+  useEffect(() => {
+    if (showRegModal && user && profile) {
+      setRegForm(prev => ({
+        ...prev,
+        playername: profile.full_name || '',
+        playerage: profile.age || '',
+        playeremail: user.email || '',
+        playercontact: profile.contact_info || '',
+        player_id: profile.player_id || ''
+      }));
+    }
+  }, [showRegModal, user, profile]);
 
   if (!tournament) {
     return (
@@ -93,32 +110,23 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
           playeremail: regForm.playeremail,
           playercontact: regForm.playercontact,
           gameuid: regForm.gameuid,
-          promocode: regForm.promocode
+          promocode: regForm.promocode,
+          player_id: regForm.player_id
         })
       });
 
       if (response.ok) {
         const result = await response.json();
-        // Call the local onRegister to update local state
-        const registration = {
-          id: Date.now().toString(),
-          tournamentid: tournament.id,
-          tournamenttitle: tournament.title,
-          playername: regForm.playername,
-          Player_Age: regForm.playerage,
-          playeremail: regForm.playeremail,
-          playercontact: regForm.playercontact,
-          gameuid: regForm.gameuid,
-          Promo_Code: regForm.promocode,
-          registrationdate: Date.now()
-        };
-        onRegister(registration);
+        // Call the local onRegister to update local state and re-fetch registrations
+        onRegister();
         setRegistrationSuccess(true);
         setShowToast(true);
 
+        // Give time for data to be re-fetched before closing modal
         setTimeout(() => {
           setShowToast(false);
-        }, 4000);
+          closeModals();
+        }, 2000);
       } else {
         const error = await response.json();
         alert(`Registration failed: ${error.error}`);
@@ -140,7 +148,8 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
       playeremail: '',
       playercontact: '',
       gameuid: '',
-      promocode: ''
+      promocode: '',
+      player_id: ''
     });
     setIsSubmitting(false);
   };

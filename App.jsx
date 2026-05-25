@@ -7,6 +7,7 @@ import AdminGate from './components/AdminGate.jsx';
 import AdminPanel from './components/AdminPanel.jsx';
 import Preloader from './components/Preloader.jsx';
 import OnboardingModal from './components/OnboardingModal.jsx';
+import { useAuth } from './context/AuthContext.jsx';
 import { dbService } from './services/dbService.js';
 
 // Lazy load page components
@@ -15,9 +16,12 @@ const TournamentsPage = lazy(() => import('./pages/TournamentsPage.jsx'));
 const TournamentDetailsPage = lazy(() => import('./pages/TournamentDetailsPage.jsx'));
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage.jsx'));
 const StreamsPage = lazy(() => import('./pages/StreamsPage.jsx'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
 
 const App = () => {
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [prevUser, setPrevUser] = useState(null);
   
   // App State - Initialized as empty arrays to prevent slice errors
   const [tournaments, setTournaments] = useState([]);
@@ -70,6 +74,40 @@ const App = () => {
 
     loadInitialData();
   }, []);
+
+  // Re-fetch data when auth state changes (login/logout) - Only when user state actually changes
+  useEffect(() => {
+    // Skip if this is the initial render (both null)
+    if (prevUser === null && user === null) {
+      return;
+    }
+
+    // Only refetch if user state has actually changed (login or logout)
+    if (prevUser?.id !== user?.id) {
+      const refetchAllData = async () => {
+        try {
+          const [tournamentsData, leaderboardData, streamsData, registrationsData, logsData] = await Promise.all([
+            dbService.getTournaments(),
+            dbService.getLeaderboard(),
+            dbService.getStreams(),
+            dbService.getRegistrations(),
+            dbService.getLogs()
+          ]);
+          setTournaments(tournamentsData);
+          setLeaderboard(leaderboardData);
+          setStreams(streamsData);
+          setRegistrations(registrationsData);
+          setLogs(logsData);
+        } catch (error) {
+          console.error('Failed to refetch data after auth change:', error);
+        }
+      };
+
+      refetchAllData();
+    }
+
+    setPrevUser(user);
+  }, [user, prevUser]);
 
   // Handlers wrapped in useCallback and calling API
   const handleSaveTournaments = useCallback(async (data) => {
@@ -184,6 +222,7 @@ const App = () => {
             <Route path="/tournament/:id" element={<TournamentDetailsPage tournaments={tournaments} onRegister={handleRegister} registrations={registrations} />} />
             <Route path="/leaderboard" element={<LeaderboardPage leaderboard={leaderboard} />} />
             <Route path="/streams" element={<StreamsPage streams={streams} />} />
+            <Route path="/profile" element={<ProfilePage tournaments={tournaments} registrations={registrations} leaderboard={leaderboard} />} />
             
             {/* Admin Route */}
             <Route path="/admin" element={

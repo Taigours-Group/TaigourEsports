@@ -3,6 +3,13 @@ import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 
 export { supabase };
 
+// Helper function to generate unique player ID
+const generatePlayerID = () => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `PLAYER_${timestamp}_${randomStr}`;
+};
+
 class AuthService {
   // Check if we are on a native mobile platform
   isNative() {
@@ -91,9 +98,25 @@ class AuthService {
   }
 
   async createProfile(userId, profileData) {
+    // Generate player_id if not provided
+    if (!profileData.player_id) {
+      profileData.player_id = generatePlayerID();
+    }
+    
+    // Initialize player stats if not provided
+    if (profileData.player_rank === undefined) {
+      profileData.player_rank = 'UNRANKED';
+    }
+    if (profileData.player_points === undefined) {
+      profileData.player_points = 0;
+    }
+    if (profileData.player_kill === undefined) {
+      profileData.player_kill = 0;
+    }
+
     const { data, error } = await supabase
       .from('profiles')
-      .insert([{ id: userId, ...profileData }]);
+      .upsert([{ id: userId, ...profileData }]);
     
     return error ? { error } : { data };
   }

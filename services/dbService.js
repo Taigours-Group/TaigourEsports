@@ -12,16 +12,9 @@ class DBService {
   // Tournaments
   async getTournaments() {
     try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*');
-
-      if (error) {
-        console.error('Error fetching tournaments:', error);
-        return [];
-      }
-
-      return data || [];
+      const response = await fetch('/api/tournaments');
+      if (!response.ok) throw new Error('Failed to fetch tournaments');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching tournaments:', error);
       return [];
@@ -63,17 +56,9 @@ class DBService {
   // Leaderboard
   async getLeaderboard() {
     try {
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .order('points', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching leaderboard:', error);
-        return [];
-      }
-
-      return data || [];
+      const response = await fetch('/api/leaderboard');
+      if (!response.ok) throw new Error('Failed to fetch leaderboard');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       return [];
@@ -115,16 +100,9 @@ class DBService {
   // Streams
   async getStreams() {
     try {
-      const { data, error } = await supabase
-        .from('streams')
-        .select('*');
-
-      if (error) {
-        console.error('Error fetching streams:', error);
-        return [];
-      }
-
-      return data || [];
+      const response = await fetch('/api/streams');
+      if (!response.ok) throw new Error('Failed to fetch streams');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching streams:', error);
       return [];
@@ -166,17 +144,9 @@ class DBService {
   // Registrations
   async getRegistrations() {
     try {
-      const { data, error } = await supabase
-        .from('registrations')
-        .select('*')
-        .order('registrationdate', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching registrations:', error);
-        return [];
-      }
-
-      return data || [];
+      const response = await fetch('/api/registrations');
+      if (!response.ok) throw new Error('Failed to fetch registrations');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching registrations:', error);
       return [];
@@ -255,17 +225,9 @@ class DBService {
   // Logs
   async getLogs() {
     try {
-      const { data, error } = await supabase
-        .from('logs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching logs:', error);
-        return [];
-      }
-
-      return data || [];
+      const response = await fetch('/api/logs');
+      if (!response.ok) throw new Error('Failed to fetch logs');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching logs:', error);
       return [];

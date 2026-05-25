@@ -424,19 +424,20 @@ const AdminPanel = ({
             </div>
           </div>
 
-          <div className="w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
+          <div className="w-full lg:w-auto overflow-x-hidden pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
             {[
               { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' },
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
               { id: 'leaderboard', label: 'Ranks', icon: 'fa-crown' },
               { id: 'streams', label: 'Feeds', icon: 'fa-bolt' },
               { id: 'registrations', label: 'Personnel', icon: 'fa-users' },
+              { id: 'Player Stats', label: 'Player Stats', icon: 'fa-chart-line' },
               { id: 'logs', label: 'Logs', icon: 'fa-list-ul' }
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => { setActiveView(tab.id); resetForms(); }}
-                className={`px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-orbitron font-black text-[8px] md:text-[10px] uppercase tracking-widest transition-all flex items-center gap-1 md:gap-2 border flex-shrink-0 ${activeView === tab.id ? 'bg-primary text-dark border-primary shadow-[0_0_15px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'}`}
+                className={`px-3 md:px-4 py-2 md:py-2.2 rounded-lg font-orbitron font-black text-[8px] md:text-[10px] uppercase tracking-widest transition-all flex items-center gap-1 md:gap-2 border flex-shrink-0 ${activeView === tab.id ? 'bg-primary text-dark border-primary shadow-[0_0_15px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'}`}
               >
                 <i className={`fa-solid ${tab.icon}`}></i> <span className="hidden sm:inline">{tab.label}</span>
               </button>

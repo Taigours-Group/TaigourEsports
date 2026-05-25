@@ -112,7 +112,7 @@ app.get('/api/streams', async (req, res) => {
 // Tournament registration
 app.post('/api/register', async (req, res) => {
   try {
-    const { tournamentid, playername, playerage, playeremail, playercontact, gameuid, promocode } = req.body;
+    const { tournamentid, playername, playerage, playeremail, playercontact, gameuid, promocode, player_id } = req.body;
 
     if (!tournamentid || !playername || !playerage || !playeremail || !playercontact || !gameuid) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -165,6 +165,7 @@ app.post('/api/register', async (req, res) => {
       playercontact,
       gameuid,
       Promo_Code: promocode || null,
+      player_id: player_id || null,
       registrationdate: new Date().toISOString()
     };
 
