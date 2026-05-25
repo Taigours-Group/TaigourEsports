@@ -1,14 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
 import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase credentials in authService');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export { supabase };
 
 class AuthService {
   // Check if we are on a native mobile platform
