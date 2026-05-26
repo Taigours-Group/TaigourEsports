@@ -2,11 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { balanceService } from '../services/balanceService';
 
 const Header = () => {
   const { user, profile, loading, loginWithGoogle, loginWithApple, loginWithFacebook, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [playerBalance, setPlayerBalance] = useState(null);
   const location = useLocation();
   const userMenuRef = useRef(null);
 
@@ -15,6 +17,27 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Fetch balance whenever the logged-in user changes
+  const fetchBalance = async () => {
+    try {
+      const { data, error } = await balanceService.getPlayerBalance(user.id);
+      if (!error && data) {
+        setPlayerBalance(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchBalance();
+    } else {
+      setPlayerBalance(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -166,9 +189,12 @@ const Header = () => {
                   }}
                   id="user-menu-button"
                 >
-                  <span className="font-orbitron font-bold text-[10px] text-gray-300 uppercase tracking-wider group-hover:text-white transition-colors">
-                    {getUserDisplayName()}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <i className="fa-solid fa-wallet text-primary text-xs"></i>
+                    <span className="font-orbitron font-bold text-[10px] text-primary uppercase tracking-wider">
+                      रु {playerBalance?.balance?.toLocaleString() || '0'}
+                    </span>
+                  </div>
                   <div className="relative">
                     {getUserAvatar() ? (
                       <img
@@ -203,6 +229,10 @@ const Header = () => {
                   >
                     <div className="px-4 py-3 border-b border-white/5">
                       <p className="font-orbitron font-bold text-xs text-white truncate">{getUserDisplayName()}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <i className="fa-solid fa-wallet text-primary text-[9px]"></i>
+                        <p className="text-[10px] text-primary font-bold">रु {playerBalance?.balance?.toLocaleString() || '0'}</p>
+                      </div>
                       <p className="text-[10px] text-gray-500 truncate mt-0.5">{user.email}</p>
                     </div>
                     <div className="py-1 border-b border-white/5">

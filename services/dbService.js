@@ -1,10 +1,5 @@
 
 import { supabase } from './supabaseClient';
-import { Tournament, LeaderboardEntry, StreamVideo, Registration, LogEntry, GameType } from '../types';
-
-// Default values
-const DEFAULT_STREAMS = [];
-
 
 
 class DBService {

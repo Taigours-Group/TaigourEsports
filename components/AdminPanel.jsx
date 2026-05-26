@@ -1,6 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
-import { Tournament, LeaderboardEntry, GameType, StreamVideo, Registration, LogEntry } from '../types';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
+
+// Lazy-load AdminRequestsPanel at module level (not inside a render function)
+const AdminRequestsPanel = lazy(() => import('./AdminRequestsPanel'));
+import PlayerStatsAdmin from './PlayerStatsAdmin';
 
 const AdminPanel = ({
   tournaments, saveTournaments, refetchTournaments,
@@ -46,8 +49,8 @@ const AdminPanel = ({
   // Statistics Calculation
   const stats = useMemo(() => {
     const totalPrize = tournaments.reduce((acc, t) => {
-        const val = parseInt(t.prize.replace(/[^0-9]/g, ''));
-        return acc + (isNaN(val) ? 0 : val);
+      const val = parseInt(t.prize.replace(/[^0-9]/g, ''));
+      return acc + (isNaN(val) ? 0 : val);
     }, 0);
     const totalPlayers = registrations.length;
     const activeTourneys = tournaments.length;
@@ -76,9 +79,9 @@ const AdminPanel = ({
     }
     return base.filter(item => {
       const matchSearch = (
-        (item.title || '') + 
-        (item.teamname || '') + 
-        (item.playername || '') + 
+        (item.title || '') +
+        (item.teamname || '') +
+        (item.playername || '') +
         (item.tournamenttitle || '') +
         (item.gameuid || '') +
         (item.playeremail || '')
@@ -253,29 +256,27 @@ const AdminPanel = ({
 
     try {
       switch (activeView) {
-        case 'tournaments':
-          const deleteTournamentRes = await fetch(`/api/admin/tournaments/${id}`, { method: 'DELETE' });
-          if (deleteTournamentRes.ok) {
-            await saveTournaments(tournaments.filter(t => t.id !== id));
-          }
+        case 'tournaments': {
+          const res = await fetch(`/api/admin/tournaments/${id}`, { method: 'DELETE' });
+          if (res.ok) await saveTournaments(tournaments.filter(t => t.id !== id));
           break;
-        case 'leaderboard':
-          const deleteLeaderboardRes = await fetch(`/api/admin/leaderboard/${id}`, { method: 'DELETE' });
-          if (deleteLeaderboardRes.ok) {
-            await saveLeaderboard(leaderboard.filter(l => l.id !== id));
-          }
+        }
+        case 'leaderboard': {
+          const res = await fetch(`/api/admin/leaderboard/${id}`, { method: 'DELETE' });
+          if (res.ok) await saveLeaderboard(leaderboard.filter(l => l.id !== id));
           break;
-        case 'streams':
-          const deleteStreamRes = await fetch(`/api/admin/streams/${id}`, { method: 'DELETE' });
-          if (deleteStreamRes.ok) {
-            await saveStreams(streams.filter(s => s.id !== id));
-          }
+        }
+        case 'streams': {
+          const res = await fetch(`/api/admin/streams/${id}`, { method: 'DELETE' });
+          if (res.ok) await saveStreams(streams.filter(s => s.id !== id));
           break;
-        case 'registrations':
-          const deleteRegistrationRes = await fetch(`/api/admin/registrations/${id}`, { method: 'DELETE' });
-          if (deleteRegistrationRes.ok) {
-            await saveRegistrations(registrations.filter(r => r.id !== id));
-          }
+        }
+        case 'registrations': {
+          const res = await fetch(`/api/admin/registrations/${id}`, { method: 'DELETE' });
+          if (res.ok) await saveRegistrations(registrations.filter(r => r.id !== id));
+          break;
+        }
+        default:
           break;
       }
     } catch (error) {
@@ -298,6 +299,13 @@ const AdminPanel = ({
     if (activeView === 'streams') setStreamForm({ ...initialStream, ...item });
   };
 
+  // Render the lazily-loaded AdminRequestsPanel (component loaded at module level)
+  const renderRequests = () => (
+    <Suspense fallback={<div className="p-8 text-center text-gray-400">Loading requests...</div>}>
+      <AdminRequestsPanel />
+    </Suspense>
+  );
+
   const updatePrizeBreakdown = (index, field, value) => {
     const newBreakdown = [...(tourneyForm.prize_breakdown || [])];
     newBreakdown[index] = { ...newBreakdown[index], [field]: value };
@@ -305,9 +313,9 @@ const AdminPanel = ({
   };
 
   const addPrizeRow = () => {
-    setTourneyForm({ 
-      ...tourneyForm, 
-      prize_breakdown: [...(tourneyForm.prize_breakdown || []), { position: '', reward: '' }] 
+    setTourneyForm({
+      ...tourneyForm,
+      prize_breakdown: [...(tourneyForm.prize_breakdown || []), { position: '', reward: '' }]
     });
   };
 
@@ -382,7 +390,7 @@ const AdminPanel = ({
       alert('SMS Sent Successfully to the player.');
     }
   };
-  
+
   const refreshRegistrations = async () => {
     setIsRefreshingRegistrations(true);
     try {
@@ -424,7 +432,7 @@ const AdminPanel = ({
             </div>
           </div>
 
-          <div className="w-full lg:w-auto overflow-x-hidden pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
+          <div className="w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
             {[
               { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' },
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
@@ -432,6 +440,7 @@ const AdminPanel = ({
               { id: 'streams', label: 'Feeds', icon: 'fa-bolt' },
               { id: 'registrations', label: 'Personnel', icon: 'fa-users' },
               { id: 'Player Stats', label: 'Player Stats', icon: 'fa-chart-line' },
+              { id: 'requests', label: 'Requests', icon: 'fa-inbox' },
               { id: 'logs', label: 'Logs', icon: 'fa-list-ul' }
             ].map(tab => (
               <button
@@ -517,40 +526,40 @@ const AdminPanel = ({
               </div>
             )}
 
-            {activeView !== 'dashboard' && activeView !== 'logs' && (
+            {activeView !== 'dashboard' && activeView !== 'logs' && activeView !== 'Player Stats' && (
               <div className="bg-bg-card rounded-2xl border border-white/5 overflow-hidden animate-fade-in shadow-2xl">
                 <div className="p-4 md:p-6 border-b border-white/5 flex flex-col gap-4">
-                   <div className="relative w-full flex-grow">
-                      <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-                      <input
-                        type="text"
-                        placeholder={`Search nexus ${activeView}...`}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white font-medium focus:border-primary outline-none transition-all placeholder:text-gray-700 text-sm"
-                      />
-                   </div>
-                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-wrap">
-                      {activeView === 'registrations' && (
-                        <button
-                          onClick={refreshRegistrations}
-                          disabled={isRefreshingRegistrations}
-                          className={`px-3 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all border flex-shrink-0 ${isRefreshingRegistrations ? 'bg-white/10 text-gray-400 border-white/10 cursor-not-allowed' : 'bg-tertiary/20 text-tertiary border-tertiary/30 hover:bg-tertiary hover:text-dark'}`}
-                        >
-                          <i className={`fa-solid ${isRefreshingRegistrations ? 'fa-spinner fa-spin' : 'fa-rotate-right'} mr-1`}></i>
-                          {isRefreshingRegistrations ? 'Refreshing...' : 'Refresh'}
-                        </button>
-                      )}
-                      {['all', 'freefire', 'pubg', 'ludo'].map(g => (
-                        <button
-                          key={g}
-                          onClick={() => setFilterGame(g)}
-                          className={`px-3 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all flex-shrink-0 ${filterGame === g ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-500 border border-transparent hover:border-white/20'}`}
-                        >
-                          {g}
-                        </button>
-                      ))}
-                   </div>
+                  <div className="relative w-full flex-grow">
+                    <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
+                    <input
+                      type="text"
+                      placeholder={`Search nexus ${activeView}...`}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white font-medium focus:border-primary outline-none transition-all placeholder:text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-wrap">
+                    {activeView === 'registrations' && (
+                      <button
+                        onClick={refreshRegistrations}
+                        disabled={isRefreshingRegistrations}
+                        className={`px-3 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all border flex-shrink-0 ${isRefreshingRegistrations ? 'bg-white/10 text-gray-400 border-white/10 cursor-not-allowed' : 'bg-tertiary/20 text-tertiary border-tertiary/30 hover:bg-tertiary hover:text-dark'}`}
+                      >
+                        <i className={`fa-solid ${isRefreshingRegistrations ? 'fa-spinner fa-spin' : 'fa-rotate-right'} mr-1`}></i>
+                        {isRefreshingRegistrations ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                    )}
+                    {['all', 'freefire', 'pubg', 'ludo'].map(g => (
+                      <button
+                        key={g}
+                        onClick={() => setFilterGame(g)}
+                        className={`px-3 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-orbitron font-bold uppercase tracking-widest transition-all flex-shrink-0 ${filterGame === g ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-500 border border-transparent hover:border-white/20'}`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {activeView === 'registrations' && (
@@ -585,34 +594,34 @@ const AdminPanel = ({
                       {filteredList.map((item) => (
                         <tr key={item.id} className="hover:bg-white/2 transition-colors">
                           <td className="p-4 md:p-6">
-                             <div className="flex items-center gap-2 md:gap-4">
-                               {item.image || item.avatar ? (
-                                 <img src={item.image || item.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" alt="" />
-                               ) : (
-                                 <div className="w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 flex-shrink-0">
-                                   <i className="fa-solid fa-id-badge text-gray-700"></i>
-                                 </div>
-                               )}
-                               <div className="min-w-0">
-                                 <div className="text-white font-bold text-sm md:text-base line-clamp-1">{item.title || item.teamname || item.playername}</div>
-                                 <div className="text-gray-500 text-[8px] md:text-[10px] font-bold uppercase tracking-widest truncate">
-                                   {item.game || item.type || (activeView === 'registrations' ? `Sector: ${item.tournamenttitle}` : 'System Data')}
-                                 </div>
-                               </div>
-                             </div>
+                            <div className="flex items-center gap-2 md:gap-4">
+                              {item.image || item.avatar ? (
+                                <img src={item.image || item.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" alt="" />
+                              ) : (
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 flex-shrink-0">
+                                  <i className="fa-solid fa-id-badge text-gray-700"></i>
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="text-white font-bold text-sm md:text-base line-clamp-1">{item.title || item.teamname || item.playername}</div>
+                                <div className="text-gray-500 text-[8px] md:text-[10px] font-bold uppercase tracking-widest truncate">
+                                  {item.game || item.type || (activeView === 'registrations' ? `Sector: ${item.tournamenttitle}` : 'System Data')}
+                                </div>
+                              </div>
+                            </div>
                           </td>
                           <td className="p-4 md:p-6">
-                             <div className="text-[8px] md:text-xs space-y-0.5 md:space-y-1">
-                               {item.prize && <div className="text-primary font-bold">Reward: {item.prize}</div>}
-                               {item.maxSlots && <div className="text-gray-400">Slots: {item.max_slots}</div>}
-                               {activeView === 'leaderboard' && <div className="text-accent font-bold">Rank: {item.rank || '-'} | Points: {item.points || 0} | K: {item.kills || 0} | W: {item.wins || 0}</div>}
-                               {item.date && <div className="text-gray-400">Deploy: {item.date}</div>}
+                            <div className="text-[8px] md:text-xs space-y-0.5 md:space-y-1">
+                              {item.prize && <div className="text-primary font-bold">Reward: {item.prize}</div>}
+                              {item.maxSlots && <div className="text-gray-400">Slots: {item.max_slots}</div>}
+                              {activeView === 'leaderboard' && <div className="text-accent font-bold">Rank: {item.rank || '-'} | Points: {item.points || 0} | K: {item.kills || 0} | W: {item.wins || 0}</div>}
+                              {item.date && <div className="text-gray-400">Deploy: {item.date}</div>}
                               {item.gameuid && (
-                                 <div className="space-y-0.5">
-                                   <div className="text-white font-bold">UID: {item.gameuid}</div>
-                                   <div className="text-gray-500 text-[7px] md:text-[9px] truncate max-w-[150px]">{item.playeremail}</div>
-                                 </div>
-                               )}
+                                <div className="space-y-0.5">
+                                  <div className="text-white font-bold">UID: {item.gameuid}</div>
+                                  <div className="text-gray-500 text-[7px] md:text-[9px] truncate max-w-[150px]">{item.playeremail}</div>
+                                </div>
+                              )}
                               {item.youtubeid && <div className="text-accent font-bold flex items-center gap-1"><i className="fab fa-youtube"></i> {item.youtubeid}</div>}
                               {activeView === 'registrations' && (
                                 <div className={`font-bold flex items-center gap-1 ${isSmsSent(item) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
@@ -627,40 +636,40 @@ const AdminPanel = ({
                               )}
                               {activeView === 'registrations' && (
                                 <div className="text-gray-300">
-                                  Promo: <span className="text-primary font-bold">{item.Promo_Code || item.promocode || 'N/A'}</span>
+                                  Promo: <span className="text-primary font-bold">{item.Promo_Code || item.promo_code || 'N/A'}</span>
                                 </div>
                               )}
-                             </div>
+                            </div>
                           </td>
                           <td className="p-4 md:p-6 text-right">
-                             <div className="flex justify-end gap-1 md:gap-2">
-                               {activeView === 'tournaments' && (
-                                 <button
-                                   onClick={() => { setActiveView('registrations'); setSearch(item.title); }}
-                                   title="View Enlistments"
-                                   className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary hover:text-dark transition-all flex-shrink-0"
-                                 >
-                                   <i className="fa-solid fa-users-viewfinder text-xs md:text-sm"></i>
-                                 </button>
-                               )}
-                               {activeView === 'registrations' && (
-                                 <button
-                                   onClick={() => setViewingReg(item)}
-                                   title="View Dossier"
-                                   className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all flex-shrink-0"
-                                 >
-                                   <i className="fa-solid fa-address-card text-xs md:text-sm"></i>
-                                 </button>
-                               )}
-                               {activeView !== 'registrations' && (
-                                 <button onClick={() => startEdit(item)} className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all flex-shrink-0">
-                                   <i className="fa-solid fa-pen-to-square text-xs md:text-sm"></i>
-                                 </button>
-                               )}
-                               <button onClick={() => handleDelete(item.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-pink hover:bg-pink hover:text-white transition-all flex-shrink-0">
-                                 <i className="fa-solid fa-trash-can text-xs md:text-sm"></i>
-                               </button>
-                             </div>
+                            <div className="flex justify-end gap-1 md:gap-2">
+                              {activeView === 'tournaments' && (
+                                <button
+                                  onClick={() => { setActiveView('registrations'); setSearch(item.title); }}
+                                  title="View Enlistments"
+                                  className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-tertiary hover:bg-tertiary hover:text-dark transition-all flex-shrink-0"
+                                >
+                                  <i className="fa-solid fa-users-viewfinder text-xs md:text-sm"></i>
+                                </button>
+                              )}
+                              {activeView === 'registrations' && (
+                                <button
+                                  onClick={() => setViewingReg(item)}
+                                  title="View Dossier"
+                                  className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all flex-shrink-0"
+                                >
+                                  <i className="fa-solid fa-address-card text-xs md:text-sm"></i>
+                                </button>
+                              )}
+                              {activeView !== 'registrations' && (
+                                <button onClick={() => startEdit(item)} className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-primary hover:bg-primary hover:text-dark transition-all flex-shrink-0">
+                                  <i className="fa-solid fa-pen-to-square text-xs md:text-sm"></i>
+                                </button>
+                              )}
+                              <button onClick={() => handleDelete(item.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-pink hover:bg-pink hover:text-white transition-all flex-shrink-0">
+                                <i className="fa-solid fa-trash-can text-xs md:text-sm"></i>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -670,33 +679,41 @@ const AdminPanel = ({
               </div>
             )}
 
-            {activeView === 'logs' && (
-               <div className="bg-bg-card rounded-2xl border border-white/5 p-4 md:p-8 animate-fade-in shadow-2xl">
-                 <h3 className="text-lg md:text-xl font-orbitron font-black text-white uppercase tracking-widest mb-6">Nexus System Logs</h3>
-                 <div className="space-y-2 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-4 custom-scrollbar font-mono text-[9px] md:text-[10px]">
-                    {systemLogs.length === 0 && (
-                      <div className="p-4 bg-white/2 border border-white/5 rounded-lg text-gray-500 uppercase tracking-widest text-center">
-                        No logs available yet
-                      </div>
-                    )}
-                    {systemLogs.map(log => {
-                      const logTimestamp = log.timestamp || log.created_at || 'N/A';
-                      const logMethod = log.method || log.http_method || 'INFO';
-                      const logEndpoint = log.endpoint || log.path || log.route || 'Unknown endpoint';
+            {activeView === 'Player Stats' && (
+              <PlayerStatsAdmin registrations={registrations} />
+            )}
 
-                      return (
-                        <div key={log.id} className="p-3 md:p-4 bg-white/2 border-l-4 border-primary/40 rounded-r-lg flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-4 group hover:bg-white/5 transition-all">
-                          <div className="flex flex-col gap-1 md:gap-0 md:flex-row md:items-center md:gap-4 min-w-0">
-                             <span className="text-gray-600 truncate">[{logTimestamp}]</span>
-                             <span className={`font-black uppercase tracking-wider flex-shrink-0 ${logMethod === 'POST' ? 'text-tertiary' : logMethod === 'PUT' ? 'text-primary' : 'text-accent'}`}>{logMethod}</span>
-                             <span className="text-white truncate">{logEndpoint}</span>
-                          </div>
-                          <span className="text-tertiary font-bold flex-shrink-0">200_OK</span>
+            {activeView === 'requests' && (
+              renderRequests()
+            )}
+
+            {activeView === 'logs' && (
+              <div className="bg-bg-card rounded-2xl border border-white/5 p-4 md:p-8 animate-fade-in shadow-2xl">
+                <h3 className="text-lg md:text-xl font-orbitron font-black text-white uppercase tracking-widest mb-6">Nexus System Logs</h3>
+                <div className="space-y-2 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-4 custom-scrollbar font-mono text-[9px] md:text-[10px]">
+                  {systemLogs.length === 0 && (
+                    <div className="p-4 bg-white/2 border border-white/5 rounded-lg text-gray-500 uppercase tracking-widest text-center">
+                      No logs available yet
+                    </div>
+                  )}
+                  {systemLogs.map(log => {
+                    const logTimestamp = log.timestamp || log.created_at || 'N/A';
+                    const logMethod = log.method || log.http_method || 'INFO';
+                    const logEndpoint = log.endpoint || log.path || log.route || 'Unknown endpoint';
+
+                    return (
+                      <div key={log.id} className="p-3 md:p-4 bg-white/2 border-l-4 border-primary/40 rounded-r-lg flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-4 group hover:bg-white/5 transition-all">
+                        <div className="flex flex-col gap-1 md:gap-0 md:flex-row md:items-center md:gap-4 min-w-0">
+                          <span className="text-gray-600 truncate">[{logTimestamp}]</span>
+                          <span className={`font-black uppercase tracking-wider flex-shrink-0 ${logMethod === 'POST' ? 'text-tertiary' : logMethod === 'PUT' ? 'text-primary' : 'text-accent'}`}>{logMethod}</span>
+                          <span className="text-white truncate">{logEndpoint}</span>
                         </div>
-                      );
-                    })}
-                 </div>
-               </div>
+                        <span className="text-tertiary font-bold flex-shrink-0">200_OK</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
 
@@ -715,197 +732,197 @@ const AdminPanel = ({
                 {activeView === 'tournaments' && (
                   <form onSubmit={handleSaveTournament} className="space-y-4 md:space-y-6">
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Game</label>
-                          <select
-                            className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
-                            value={tourneyForm.type}
-                            onChange={e => setTourneyForm({...tourneyForm, type: e.target.value})}
-                          >
-                             <option value="freefire">Free Fire</option>
-                             <option value="pubg">PUBG Mobile</option>
-                             <option value="ludo">Ludo King</option>
-                          </select>
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Max Slots</label>
-                          <input
-                            type="number"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={tourneyForm.max_slots}
-                            onChange={e => setTourneyForm({...tourneyForm, max_slots: parseInt(e.target.value) || 0})}
-                          />
-                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Game</label>
+                        <select
+                          className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
+                          value={tourneyForm.type}
+                          onChange={e => setTourneyForm({ ...tourneyForm, type: e.target.value })}
+                        >
+                          <option value="freefire">Free Fire</option>
+                          <option value="pubg">PUBG Mobile</option>
+                          <option value="ludo">Ludo King</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Max Slots</label>
+                        <input
+                          type="number"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={tourneyForm.max_slots}
+                          onChange={e => setTourneyForm({ ...tourneyForm, max_slots: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Operational Title</label>
-                        <input
-                          type="text"
-                          required
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
-                          placeholder="Mission Name..."
-                          value={tourneyForm.title}
-                          onChange={e => setTourneyForm({...tourneyForm, title: e.target.value})}
-                        />
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Operational Title</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
+                        placeholder="Mission Name..."
+                        value={tourneyForm.title}
+                        onChange={e => setTourneyForm({ ...tourneyForm, title: e.target.value })}
+                      />
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tournament Banner URL</label>
-                        <input
-                          type="text"
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] mb-2 font-mono"
-                          placeholder="https://image-link.com/banner.jpg"
-                          value={tourneyForm.image}
-                          onChange={e => setTourneyForm({...tourneyForm, image: e.target.value})}
-                        />
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tournament Banner URL</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] mb-2 font-mono"
+                        placeholder="https://image-link.com/banner.jpg"
+                        value={tourneyForm.image}
+                        onChange={e => setTourneyForm({ ...tourneyForm, image: e.target.value })}
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Mission Date</label>
-                          <input
-                            type="date"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            placeholder="Dec 15, 2025"
-                            value={tourneyForm.date}
-                            onChange={e => setTourneyForm({...tourneyForm, date: e.target.value})}
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time (PST/NST)</label>
-                          <input
-                            type="text"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            placeholder="07:00 PM"
-                            value={tourneyForm.time}
-                            onChange={e => setTourneyForm({...tourneyForm, time: e.target.value})}
-                          />
-                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 md:gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reg Start Date</label>
-                          <input
-                            type="date"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={tourneyForm.registration_start_date || ''}
-                            onChange={e => setTourneyForm({ ...tourneyForm, registration_start_date: e.target.value })}
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reg End Date</label>
-                          <input
-                            type="date"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={tourneyForm.registration_end_date || ''}
-                            onChange={e => setTourneyForm({ ...tourneyForm, registration_end_date: e.target.value })}
-                          />
-                       </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Location</label>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Mission Date</label>
+                        <input
+                          type="date"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          placeholder="Dec 15, 2025"
+                          value={tourneyForm.date}
+                          onChange={e => setTourneyForm({ ...tourneyForm, date: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time (PST/NST)</label>
                         <input
                           type="text"
                           className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                          placeholder="Nepal / Bermuda"
-                          value={tourneyForm.location}
-                          onChange={e => setTourneyForm({...tourneyForm, location: e.target.value})}
+                          placeholder="07:00 PM"
+                          value={tourneyForm.time}
+                          onChange={e => setTourneyForm({ ...tourneyForm, time: e.target.value })}
                         />
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Intel (Description)</label>
-                        <textarea
-                          rows={2}
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-rajdhani"
-                          placeholder="Mission Briefing..."
-                          value={tourneyForm.description}
-                          onChange={e => setTourneyForm({...tourneyForm, description: e.target.value})}
-                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total Prize</label>
-                          <input
-                            type="text"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={tourneyForm.prize}
-                            onChange={e => setTourneyForm({...tourneyForm, prize: e.target.value})}
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Entry Fee</label>
-                          <input
-                            type="text"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={tourneyForm.entry_fee}
-                            onChange={e => setTourneyForm({...tourneyForm, entry_fee: e.target.value})}
-                          />
-                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reg Start Date</label>
+                        <input
+                          type="date"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={tourneyForm.registration_start_date || ''}
+                          onChange={e => setTourneyForm({ ...tourneyForm, registration_start_date: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reg End Date</label>
+                        <input
+                          type="date"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={tourneyForm.registration_end_date || ''}
+                          onChange={e => setTourneyForm({ ...tourneyForm, registration_end_date: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">External Registration URL</label>
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Location</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                        placeholder="Nepal / Bermuda"
+                        value={tourneyForm.location}
+                        onChange={e => setTourneyForm({ ...tourneyForm, location: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sector Intel (Description)</label>
+                      <textarea
+                        rows={2}
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-rajdhani"
+                        placeholder="Mission Briefing..."
+                        value={tourneyForm.description}
+                        onChange={e => setTourneyForm({ ...tourneyForm, description: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total Prize</label>
                         <input
                           type="text"
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
-                          placeholder="https://docs.google.com/..."
-                          value={tourneyForm.registration_url}
-                          onChange={e => setTourneyForm({...tourneyForm, registration_url: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={tourneyForm.prize}
+                          onChange={e => setTourneyForm({ ...tourneyForm, prize: e.target.value })}
                         />
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Primary Stream ID</label>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Entry Fee</label>
                         <input
                           type="text"
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
-                          placeholder="YouTube Video ID"
-                          value={tourneyForm.stream_id}
-                          onChange={e => setTourneyForm({...tourneyForm, stream_id: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={tourneyForm.entry_fee}
+                          onChange={e => setTourneyForm({ ...tourneyForm, entry_fee: e.target.value })}
                         />
+                      </div>
                     </div>
 
                     <div className="space-y-1">
-                       <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Prize Breakdown</label>
-                       {(tourneyForm.prize_breakdown || []).map((row, idx) => (
-                         <div key={idx} className="flex gap-2 mb-2 group/row">
-                           <input
-                             placeholder="Position"
-                             className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[9px] md:text-[10px] text-white outline-none focus:border-primary"
-                             value={row.position}
-                             onChange={(e) => updatePrizeBreakdown(idx, 'position', e.target.value)}
-                           />
-                           <input
-                             placeholder="Reward"
-                             className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[9px] md:text-[10px] text-white outline-none focus:border-primary"
-                             value={row.reward}
-                             onChange={(e) => updatePrizeBreakdown(idx, 'reward', e.target.value)}
-                           />
-                           <button
-                             type="button"
-                             onClick={() => removePrizeRow(idx)}
-                             className="text-pink hover:text-white transition-colors px-2"
-                           >
-                             <i className="fa-solid fa-xmark"></i>
-                           </button>
-                         </div>
-                       ))}
-                       <button type="button" onClick={addPrizeRow} className="text-[8px] md:text-[9px] text-primary uppercase font-bold hover:underline tracking-widest">+ Add Reward Tier</button>
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">External Registration URL</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
+                        placeholder="https://docs.google.com/..."
+                        value={tourneyForm.registration_url}
+                        onChange={e => setTourneyForm({ ...tourneyForm, registration_url: e.target.value })}
+                      />
                     </div>
 
                     <div className="space-y-1">
-                       <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Deployment Rules (One per line)</label>
-                       <textarea
-                         rows={3}
-                         className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs custom-scrollbar"
-                         value={tourneyForm.rules?.join('\n')}
-                         onChange={e => setTourneyForm({...tourneyForm, rules: e.target.value.split('\n')})}
-                       />
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Primary Stream ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
+                        placeholder="YouTube Video ID"
+                        value={tourneyForm.stream_id}
+                        onChange={e => setTourneyForm({ ...tourneyForm, stream_id: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Prize Breakdown</label>
+                      {(tourneyForm.prize_breakdown || []).map((row, idx) => (
+                        <div key={idx} className="flex gap-2 mb-2 group/row">
+                          <input
+                            placeholder="Position"
+                            className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[9px] md:text-[10px] text-white outline-none focus:border-primary"
+                            value={row.position}
+                            onChange={(e) => updatePrizeBreakdown(idx, 'position', e.target.value)}
+                          />
+                          <input
+                            placeholder="Reward"
+                            className="flex-1 bg-white/5 border border-white/10 p-2 rounded text-[9px] md:text-[10px] text-white outline-none focus:border-primary"
+                            value={row.reward}
+                            onChange={(e) => updatePrizeBreakdown(idx, 'reward', e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePrizeRow(idx)}
+                            className="text-pink hover:text-white transition-colors px-2"
+                          >
+                            <i className="fa-solid fa-xmark"></i>
+                          </button>
+                        </div>
+                      ))}
+                      <button type="button" onClick={addPrizeRow} className="text-[8px] md:text-[9px] text-primary uppercase font-bold hover:underline tracking-widest">+ Add Reward Tier</button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Deployment Rules (One per line)</label>
+                      <textarea
+                        rows={3}
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs custom-scrollbar"
+                        value={tourneyForm.rules?.join('\n')}
+                        onChange={e => setTourneyForm({ ...tourneyForm, rules: e.target.value.split('\n') })}
+                      />
                     </div>
 
                     <button type="submit" className="w-full py-4 md:py-5 bg-primary text-dark font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.3em] cyber-button shadow-[0_0_20px_rgba(0,212,255,0.2)]">
@@ -917,91 +934,91 @@ const AdminPanel = ({
                 {activeView === 'leaderboard' && (
                   <form onSubmit={handleSaveLeaderboard} className="space-y-4 md:space-y-6">
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Target Game</label>
-                            <select
-                                className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
-                                value={lbForm.game}
-                                onChange={e => setLbForm({...lbForm, game: e.target.value})}
-                            >
-                                <option value="freefire">Free Fire</option>
-                                <option value="pubg">PUBG Mobile</option>
-                                <option value="ludo">Ludo King</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Squad Identity</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
-                                placeholder="Team Name..."
-                                value={lbForm.teamname}
-                                onChange={e => setLbForm({...lbForm, teamname: e.target.value})}
-                            />
-                        </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Target Game</label>
+                        <select
+                          className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
+                          value={lbForm.game}
+                          onChange={e => setLbForm({ ...lbForm, game: e.target.value })}
+                        >
+                          <option value="freefire">Free Fire</option>
+                          <option value="pubg">PUBG Mobile</option>
+                          <option value="ludo">Ludo King</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Squad Identity</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-bold"
+                          placeholder="Team Name..."
+                          value={lbForm.teamname}
+                          onChange={e => setLbForm({ ...lbForm, teamname: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Player Image / Avatar URL</label>
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Player Image / Avatar URL</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] mb-2 font-mono"
+                        placeholder="https://i.pravatar.cc/150?u=team"
+                        value={lbForm.avatar}
+                        onChange={e => setLbForm({ ...lbForm, avatar: e.target.value })}
+                      />
+                      {lbForm.avatar && (
+                        <div className="flex justify-center">
+                          <img src={lbForm.avatar} className="w-14 h-14 md:w-16 md:h-16 rounded-lg border border-white/10 object-cover" alt="Avatar Preview" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rank</label>
                         <input
-                          type="text"
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] mb-2 font-mono"
-                          placeholder="https://i.pravatar.cc/150?u=team"
-                          value={lbForm.avatar}
-                          onChange={e => setLbForm({...lbForm, avatar: e.target.value})}
+                          type="number"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={lbForm.rank === 0 ? '' : lbForm.rank}
+                          onChange={e => setLbForm({ ...lbForm, rank: parseInt(e.target.value) || 0 })}
                         />
-                        {lbForm.avatar && (
-                          <div className="flex justify-center">
-                            <img src={lbForm.avatar} className="w-14 h-14 md:w-16 md:h-16 rounded-lg border border-white/10 object-cover" alt="Avatar Preview" />
-                          </div>
-                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Neutralized</label>
+                        <input
+                          type="number"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={lbForm.kills}
+                          onChange={e => setLbForm({ ...lbForm, kills: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rank</label>
-                          <input
-                            type="number"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={lbForm.rank === 0 ? '' : lbForm.rank}
-                            onChange={e => setLbForm({...lbForm, rank: parseInt(e.target.value) || 0})}
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Neutralized</label>
-                          <input
-                            type="number"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={lbForm.kills}
-                            onChange={e => setLbForm({...lbForm, kills: parseInt(e.target.value) || 0})}
-                          />
-                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 md:gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Wins</label>
-                          <input
-                            type="number"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={lbForm.wins}
-                            onChange={e => setLbForm({...lbForm, wins: parseInt(e.target.value) || 0})}
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total XP</label>
-                          <input
-                            type="number"
-                            className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                            value={lbForm.points}
-                            onChange={e => setLbForm({...lbForm, points: parseInt(e.target.value) || 0})}
-                          />
-                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Wins</label>
+                        <input
+                          type="number"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={lbForm.wins}
+                          onChange={e => setLbForm({ ...lbForm, wins: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Total XP</label>
+                        <input
+                          type="number"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={lbForm.points}
+                          onChange={e => setLbForm({ ...lbForm, points: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
                     </div>
 
                     <button type="submit" className="w-full py-4 md:py-5 bg-primary text-dark font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.3em] cyber-button">
-                       {editingId ? 'UPDATE RANKING' : 'INITIALIZE RANKING'}
+                      {editingId ? 'UPDATE RANKING' : 'INITIALIZE RANKING'}
                     </button>
                   </form>
                 )}
@@ -1009,43 +1026,43 @@ const AdminPanel = ({
                 {activeView === 'streams' && (
                   <form onSubmit={handleSaveStream} className="space-y-4 md:space-y-6">
                     <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Feed Title</label>
-                        <input
-                          type="text"
-                          required
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
-                          placeholder="LIVE: Nexus Finals..."
-                          value={streamForm.title}
-                          onChange={e => setStreamForm({...streamForm, title: e.target.value})}
-                        />
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Feed Title</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                        placeholder="LIVE: Nexus Finals..."
+                        value={streamForm.title}
+                        onChange={e => setStreamForm({ ...streamForm, title: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">YouTube ID or Full Link</label>
-                        <input
-                          type="text"
-                          required
-                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
-                          placeholder="e.g. bCcaErhe8as or full URL"
-                          value={streamForm.youtubeid}
-                          onChange={e => setStreamForm({...streamForm, youtubeid: e.target.value})}
-                        />
+                      <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">YouTube ID or Full Link</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs font-mono"
+                        placeholder="e.g. bCcaErhe8as or full URL"
+                        value={streamForm.youtubeid}
+                        onChange={e => setStreamForm({ ...streamForm, youtubeid: e.target.value })}
+                      />
                     </div>
                     <div className="flex items-center gap-4 p-3 md:p-4 glass rounded-xl border border-white/5">
-                        <div className="flex-grow">
-                           <div className="text-white font-bold text-xs uppercase tracking-widest">Deployment Status</div>
-                           <div className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest">{streamForm.islive ? 'Online Broadcast' : 'Archived Feed'}</div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setStreamForm({...streamForm, islive: !streamForm.islive})}
-                          className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${streamForm.islive ? 'bg-tertiary shadow-[0_0_10px_#00ff80]' : 'bg-gray-800'}`}
-                        >
-                           <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${streamForm.islive ? 'left-7' : 'left-1'}`}></div>
-                        </button>
+                      <div className="flex-grow">
+                        <div className="text-white font-bold text-xs uppercase tracking-widest">Deployment Status</div>
+                        <div className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest">{streamForm.islive ? 'Online Broadcast' : 'Archived Feed'}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStreamForm({ ...streamForm, islive: !streamForm.islive })}
+                        className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${streamForm.islive ? 'bg-tertiary shadow-[0_0_10px_#00ff80]' : 'bg-gray-800'}`}
+                      >
+                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${streamForm.islive ? 'left-7' : 'left-1'}`}></div>
+                      </button>
                     </div>
 
                     <button type="submit" className="w-full py-4 md:py-5 bg-primary text-dark font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.3em] cyber-button">
-                       {editingId ? 'UPDATE BROADCAST' : 'ESTABLISH FEED'}
+                      {editingId ? 'UPDATE BROADCAST' : 'ESTABLISH FEED'}
                     </button>
                   </form>
                 )}
@@ -1055,99 +1072,99 @@ const AdminPanel = ({
         </div>
       </div>
 
-    {/* Viewing Registration Modal */}
+      {/* Viewing Registration Modal */}
       {viewingReg && (
         <div className="fixed inset-0 z-[2000] flex items-start justify-center p-4 overflow-y-auto">
-           <div className="absolute inset-0 bg-bg-dark/90 backdrop-blur-md" onClick={() => setViewingReg(null)}></div>
-           <div className="relative w-full max-w-lg bg-bg-card p-6 md:p-12 rounded-2xl border border-primary/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] animate-fade-in my-8">
-              <button onClick={() => setViewingReg(null)} className="absolute top-4 md:top-6 right-4 md:right-6 text-gray-500 hover:text-white transition-colors">
-                 <i className="fa-solid fa-xmark text-lg md:text-xl"></i>
+          <div className="absolute inset-0 bg-bg-dark/90 backdrop-blur-md" onClick={() => setViewingReg(null)}></div>
+          <div className="relative w-full max-w-lg bg-bg-card p-6 md:p-12 rounded-2xl border border-primary/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] animate-fade-in my-8">
+            <button onClick={() => setViewingReg(null)} className="absolute top-4 md:top-6 right-4 md:right-6 text-gray-500 hover:text-white transition-colors">
+              <i className="fa-solid fa-xmark text-lg md:text-xl"></i>
+            </button>
+
+            <div className="text-center mb-8 md:mb-10">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <i className="fa-solid fa-user-ninja text-2xl md:text-3xl text-primary"></i>
+              </div>
+              <h2 className="text-xl md:text-2xl font-orbitron font-black text-white uppercase tracking-tight">Personnel <span className="text-primary">Dossier</span></h2>
+              <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Classification: Confidential</p>
+            </div>
+
+            <div className="space-y-4 md:space-y-6 font-rajdhani">
+              <div className="grid grid-cols-2 gap-4 md:gap-6">
+                <div className="space-y-1">
+                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Warrior Alias</span>
+                  <span className="text-white text-base md:text-lg font-bold break-words">{viewingReg.playername}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">System UID</span>
+                  <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.gameuid}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 md:gap-6">
+                <div className="space-y-1">
+                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Player Age</span>
+                  <span className="text-white text-base md:text-lg font-bold">{viewingReg.Player_Age || viewingReg.playerage || 'N/A'}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Promo Code</span>
+                  <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.Promo_Code || viewingReg.promo_code || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Comm-Link</span>
+                  <span className="text-primary font-bold text-sm break-all">{viewingReg.playeremail}</span>
+                </div>
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">WhatsApp Uplink</span>
+                  <span className="text-accent font-bold text-sm break-all">{viewingReg.playercontact}</span>
+                </div>
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">SMS Signal</span>
+                  <span className={`font-bold flex items-center gap-2 ${isSmsSent(viewingReg) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
+                    <i className={`fa-solid ${isSmsSent(viewingReg) ? 'fa-circle-check' : 'fa-signal'}`}></i>
+                    {isSmsSent(viewingReg) ? 'SENT' : 'PENDING'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Assigned Arena</span>
+                  <span className="text-white font-bold text-sm break-words">{viewingReg.tournamenttitle}</span>
+                </div>
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Enlistment Date</span>
+                  <span className="text-gray-400 text-sm break-words">{new Date(viewingReg.registrationdate).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 md:mt-10">
+              {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] && (
+                <div className="mb-3 text-[9px] md:text-[10px] text-[#25D366] font-orbitron font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                  <i className="fa-solid fa-circle-check"></i>
+                  MESSAGE MARKED AS SENT
+                </div>
+              )}
+              <div className="flex flex-col gap-3 mb-3">
+                <button
+                  onClick={() => sendRegistrationWhatsApp(viewingReg)}
+                  className={`w-full py-3 md:py-4 text-white font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'bg-[#1daa50]' : 'bg-[#25D366] hover:brightness-110'}`}
+                >
+                  <i className={`${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'fa-solid fa-circle-check' : 'fa-brands fa-whatsapp'} text-base md:text-lg`}></i>
+                  {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'WA SENT' : 'WHATSAPP MSG'}
+                </button>
+              </div>
+              <button
+                onClick={() => setViewingReg(null)}
+                className="w-full py-3 md:py-4 bg-primary text-dark font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-white transition-all"
+              >
+                ACKNOWLEDGE
               </button>
-
-              <div className="text-center mb-8 md:mb-10">
-                 <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <i className="fa-solid fa-user-ninja text-2xl md:text-3xl text-primary"></i>
-                 </div>
-                 <h2 className="text-xl md:text-2xl font-orbitron font-black text-white uppercase tracking-tight">Personnel <span className="text-primary">Dossier</span></h2>
-                 <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Classification: Confidential</p>
-              </div>
-
-              <div className="space-y-4 md:space-y-6 font-rajdhani">
-                 <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div className="space-y-1">
-                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Warrior Alias</span>
-                       <span className="text-white text-base md:text-lg font-bold break-words">{viewingReg.playername}</span>
-                    </div>
-                    <div className="space-y-1">
-                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">System UID</span>
-                       <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.gameuid}</span>
-                    </div>
-                 </div>
-                 <div className="grid grid-cols-2 gap-4 md:gap-6">
-                    <div className="space-y-1">
-                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Player Age</span>
-                       <span className="text-white text-base md:text-lg font-bold">{viewingReg.Player_Age || viewingReg.playerage || 'N/A'}</span>
-                    </div>
-                    <div className="space-y-1">
-                       <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Promo Code</span>
-                       <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.Promo_Code || viewingReg.promocode || 'N/A'}</span>
-                    </div>
-                 </div>
-
-                 <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Comm-Link</span>
-                       <span className="text-primary font-bold text-sm break-all">{viewingReg.playeremail}</span>
-                    </div>
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">WhatsApp Uplink</span>
-                       <span className="text-accent font-bold text-sm break-all">{viewingReg.playercontact}</span>
-                    </div>
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">SMS Signal</span>
-                       <span className={`font-bold flex items-center gap-2 ${isSmsSent(viewingReg) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
-                          <i className={`fa-solid ${isSmsSent(viewingReg) ? 'fa-circle-check' : 'fa-signal'}`}></i>
-                          {isSmsSent(viewingReg) ? 'SENT' : 'PENDING'}
-                       </span>
-                    </div>
-                 </div>
-
-                 <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Assigned Arena</span>
-                       <span className="text-white font-bold text-sm break-words">{viewingReg.tournamenttitle}</span>
-                    </div>
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                       <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Enlistment Date</span>
-                       <span className="text-gray-400 text-sm break-words">{new Date(viewingReg.registrationdate).toLocaleString()}</span>
-                    </div>
-                 </div>
-              </div>
-
-              <div className="mt-8 md:mt-10">
-                 {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] && (
-                   <div className="mb-3 text-[9px] md:text-[10px] text-[#25D366] font-orbitron font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                      <i className="fa-solid fa-circle-check"></i>
-                      MESSAGE MARKED AS SENT
-                   </div>
-                 )}
-                 <div className="flex flex-col gap-3 mb-3">
-                   <button
-                     onClick={() => sendRegistrationWhatsApp(viewingReg)}
-                     className={`w-full py-3 md:py-4 text-white font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'bg-[#1daa50]' : 'bg-[#25D366] hover:brightness-110'}`}
-                   >
-                      <i className={`${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'fa-solid fa-circle-check' : 'fa-brands fa-whatsapp'} text-base md:text-lg`}></i>
-                      {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'WA SENT' : 'WHATSAPP MSG'}
-                   </button>
-                 </div>
-                 <button
-                   onClick={() => setViewingReg(null)}
-                   className="w-full py-3 md:py-4 bg-primary text-dark font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-white transition-all"
-                 >
-                    ACKNOWLEDGE
-                 </button>
-              </div>
-           </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

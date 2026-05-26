@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import PlayerBalance from '../components/PlayerBalance';
 
 const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
   const { user, profile, loading, loginWithGoogle, logout, reloadProfile } = useAuth();
@@ -12,7 +13,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
     full_name: '',
     age: '',
     game_uid: '',
-    promocode: '',
+    promo_code: '',
     contact_info: ''
   });
   const [updating, setUpdating] = useState(false);
@@ -30,7 +31,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
         full_name: profile.full_name || '',
         age: profile.age || '',
         game_uid: profile.game_uid || '',
-        promocode: profile.promocode || '',
+        promo_code: profile.promo_code || '',
         contact_info: profile.contact_info || ''
       });
     }
@@ -52,7 +53,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
         {/* Decorative background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
 
-        <div 
+        <div
           className="glass p-8 md:p-12 rounded-2xl max-w-lg w-full text-center relative border border-primary/10"
           style={{ boxShadow: '0 0 50px rgba(0,212,255,0.05)' }}
         >
@@ -106,15 +107,15 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
   // Lookup in leaderboard to see achievements/points
   const leaderEntry = (Array.isArray(leaderboard) ? leaderboard : []).find(entry => {
     return entry.teamname?.toLowerCase() === profile?.full_name?.toLowerCase() ||
-           entry.teamname?.toLowerCase() === user?.user_metadata?.full_name?.toLowerCase();
+      entry.teamname?.toLowerCase() === user?.user_metadata?.full_name?.toLowerCase();
   });
 
-  const playerPoints = profile?.player_points || leaderEntry?.points || 0;
-  const playerRank = profile?.player_rank || leaderEntry?.rank || 'N/A';
-  const playerKills = profile?.player_kill || leaderEntry?.kills || 0;
+  const playerPoints = profile?.combat_score || leaderEntry?.points || 0;
+  const playerRank = profile?.rank || leaderEntry?.rank || 'N/A';
+  const playerKills = profile?.total_kills || leaderEntry?.kills || 0;
   const playerID = profile?.player_id || 'N/A';
 
-  
+
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -142,14 +143,14 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
       avatar_url: user.user_metadata?.avatar_url || '',
       age: ageNum,
       game_uid: profile?.game_uid || '',
-      player_rank: profile?.player_rank || 'UNRANKED',
-      player_kill: profile?.player_kill || 0,
-      player_points: profile?.player_points || 0,
-      promocode: formData.promocode.trim() || '',
+      rank: profile?.rank || 'UNRANKED',
+      total_kills: profile?.total_kills || 0,
+      combat_score: profile?.combat_score || 0,
+      promo_code: formData.promo_code.trim() || '',
       contact_info: formData.contact_info.trim()
     };
 
-    
+
 
     const { error } = await authService.createProfile(user.id, profileData);
     if (error) {
@@ -161,11 +162,11 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
     setUpdating(false);
   };
 
-  const generatePromoCode = () => {
+  const generatepromo_code = () => {
     const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const generatedCode = `TAIG${randomCode}`;
     console.log('Generated Promo Code:', generatedCode);
-    setFormData({...formData, promocode: generatedCode});
+    setFormData({ ...formData, promo_code: generatedCode });
   };
 
 
@@ -173,9 +174,9 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
   return (
     <div className="pt-24 md:pt-32 pb-24 bg-bg-dark min-h-screen">
       <div className="container mx-auto px-4 max-w-6xl">
-        
+
         {/* ─── Profile Header / Hero ─── */}
-        <div 
+        <div
           className="glass p-6 md:p-10 rounded-2xl border border-white/5 relative overflow-hidden mb-8"
           style={{
             background: 'linear-gradient(135deg, rgba(15, 15, 19, 0.95) 0%, rgba(7, 7, 9, 0.98) 100%)',
@@ -183,7 +184,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
         >
           {/* Cyber accents */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 blur-[80px] rounded-full pointer-events-none"></div>
-          
+
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 relative z-10">
             {/* Avatar block */}
             <div className="relative">
@@ -199,7 +200,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                 </div>
               )}
               {/* Online pulse */}
-              <div 
+              <div
                 className="absolute -bottom-1 -right-1 bg-tertiary px-2 py-0.5 rounded text-[8px] font-orbitron font-bold text-dark flex items-center gap-1 border-2 border-bg-dark"
                 style={{ boxShadow: '0 0 10px #00ff80' }}
               >
@@ -227,17 +228,17 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
               {/* Player ID */}
 
               <div className="flex items-center gap-1 mt-1 justify-center md:justify-start">
-              <div className="px-3 py-2 bg-white/5 border border-primary/20 rounded-lg inline-block">
-                <span className="text-[9px] font-orbitron font-bold uppercase tracking-wider text-gray-400">Player ID: </span>
-                <span className="text-[10px] font-mono font-bold text-primary">{playerID}</span>
-              </div>
-              <button 
+                <div className="px-3 py-2 bg-white/5 border border-primary/20 rounded-lg inline-block">
+                  <span className="text-[9px] font-orbitron font-bold uppercase tracking-wider text-gray-400">Player ID: </span>
+                  <span className="text-[10px] font-mono font-bold text-primary">{playerID}</span>
+                </div>
+                <button
                   onClick={() => navigator.clipboard.writeText(playerID)}
                   className=" text-[9px] px-3 py-2 bg-white/5 border-primary/20 rounded hover:bg-primary hover:text-gray-900 font-orbitron font-bold uppercase tracking-wider text-gray-400 hover:text-primary transition-colors"
                 >
                   Copy <i className="fa-regular fa-copy"></i>
                 </button>
-                </div>
+              </div>
 
               {/* Badges */}
               <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-3">
@@ -263,15 +264,15 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
             { label: 'LEADERBOARD RANK', val: playerRank === 'N/A' ? '-' : `#${playerRank}`, icon: 'fa-crown', color: 'text-accent' },
             { label: 'COMBAT POINTS', val: playerPoints, icon: 'fa-bolt', color: 'text-pink' },
           ].map((stat, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="glass p-5 rounded-xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-colors"
             >
               <div className="space-y-1">
                 <span className="text-[9px] font-orbitron font-bold text-gray-500 uppercase tracking-widest block">
                   {stat.label}
                 </span>
-                <span className="text-xl md:text-3xl font-orbitron font-black text-white block leading-none">
+                <span className="text-xl md:text-xl font-orbitron font-black text-white block leading-none">
                   {stat.val}
                 </span>
               </div>
@@ -284,10 +285,11 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
 
         {/* ─── Main Content Tabs ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* Tab buttons / selector sidebar */}
           <div className="lg:col-span-3 space-y-2">
             {[
+              { id: 'wallet', label: 'Wallet', desc: 'Balance & membership', icon: 'fa-wallet' },
               { id: 'deployments', label: 'Deployments', desc: 'Registered scrims', icon: 'fa-shield-halved' },
               { id: 'credentials', label: 'Credentials', desc: 'Update profile sheet', icon: 'fa-sliders' },
               { id: 'achievements', label: 'Achievements', desc: 'Acquired rank titles', icon: 'fa-medal' },
@@ -304,19 +306,17 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                   boxShadow: activeTab === tab.id ? '0 0 20px rgba(0, 212, 255, 0.05)' : 'none',
                 }}
               >
-                <div 
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                    activeTab === tab.id 
-                      ? 'bg-primary/20 border border-primary/30 text-primary shadow-[0_0_10px_rgba(0,212,255,0.2)]' 
-                      : 'bg-white/5 border border-white/10 text-gray-500 group-hover:text-gray-300'
-                  }`}
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${activeTab === tab.id
+                    ? 'bg-primary/20 border border-primary/30 text-primary shadow-[0_0_10px_rgba(0,212,255,0.2)]'
+                    : 'bg-white/5 border border-white/10 text-gray-500 group-hover:text-gray-300'
+                    }`}
                 >
                   <i className={`fa-solid ${tab.icon} text-sm`}></i>
                 </div>
                 <div className="flex-1">
-                  <span className={`font-orbitron font-bold text-xs uppercase tracking-wider block transition-colors ${
-                    activeTab === tab.id ? 'text-primary' : 'text-gray-300 group-hover:text-white'
-                  }`}>
+                  <span className={`font-orbitron font-bold text-xs uppercase tracking-wider block transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-gray-300 group-hover:text-white'
+                    }`}>
                     {tab.label}
                   </span>
                   <span className="text-[9px] font-rajdhani text-gray-500 uppercase tracking-widest block mt-0.5">
@@ -329,7 +329,12 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
 
           {/* Tab content panel */}
           <div className="lg:col-span-9 glass p-6 md:p-10 rounded-2xl border border-white/5 min-h-[400px]">
-            
+
+            {/* ─── TAB 0: Wallet / Balance ─── */}
+            {activeTab === 'wallet' && (
+              <PlayerBalance />
+            )}
+
             {/* ─── TAB 1: Deployments ─── */}
             {activeTab === 'deployments' && (
               <div className="space-y-6">
@@ -349,8 +354,8 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                     <p className="text-gray-500 font-rajdhani text-sm mt-1 max-w-sm mx-auto leading-relaxed">
                       You are currently not deployed in any arena sectors. Enter the arena index and secure your slot!
                     </p>
-                    <Link 
-                      to="/tournaments" 
+                    <Link
+                      to="/tournaments"
                       className="mt-6 inline-block px-8 py-3 bg-primary text-dark font-orbitron font-black text-xs uppercase tracking-widest cyber-button"
                     >
                       ENTER TOURNAMENTS
@@ -360,10 +365,10 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {myRegistrations.map((reg) => {
                       const parentT = (tournaments || []).find(t => String(t.id) === String(reg.tournamentid));
-                      
+
                       return (
-                        <div 
-                          key={reg.id} 
+                        <div
+                          key={reg.id}
                           className="bg-bg-dark border border-white/5 p-4 rounded-xl relative overflow-hidden flex flex-col justify-between group hover:border-primary/20 transition-all duration-300"
                         >
                           <div className="space-y-3">
@@ -376,7 +381,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                                 </span>
                               </div>
                             )}
-                            
+
                             <div>
                               <h4 className="font-orbitron font-black text-white text-sm uppercase tracking-tight truncate">
                                 {reg.tournamenttitle}
@@ -392,7 +397,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                               <i className="fa-solid fa-clock text-primary"></i>
                               <span>{parentT ? `${parentT.date} @ ${parentT.time}` : 'TBA'}</span>
                             </div>
-                            <Link 
+                            <Link
                               to={`/tournament/${reg.tournamentid}`}
                               className="text-primary font-orbitron font-black text-[9px] uppercase tracking-widest hover:underline"
                             >
@@ -443,7 +448,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                         type="text"
                         name="full_name"
                         value={formData.full_name}
-                        onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                         className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
                         required
                       />
@@ -456,7 +461,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                         type="number"
                         name="age"
                         value={formData.age}
-                        onChange={(e) => setFormData({...formData, age: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                         className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
                         min="10"
                         max="100"
@@ -475,25 +480,25 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                         className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-gray-500 font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
                         readOnly
                       />
-                  </div>
+                    </div>
 
-                  <div className="space-y-1.5">
+                    <div className="space-y-1.5">
                       <label className="text-gray-400 font-orbitron text-[10px] uppercase tracking-widest block">
                         Promo Code
                       </label>
                       <div className="flex gap-2 items-end">
                         <input
                           type="text"
-                          name="promocode"
-                          value={formData.promocode}
-                          onChange={(e) => setFormData({...formData, promocode: e.target.value})}
+                          name="promo_code"
+                          value={formData.promo_code}
+                          onChange={(e) => setFormData({ ...formData, promo_code: e.target.value })}
                           className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-gray-500 font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
                           readOnly
                         />
-                        {!formData.promocode && (
+                        {!formData.promo_code && (
                           <button
                             type="button"
-                            onClick={generatePromoCode}
+                            onClick={generatepromo_code}
                             className="bg-primary hover:bg-primary/80 text-dark font-orbitron font-black text-xs uppercase tracking-wider py-3 px-4 rounded-lg transition-all whitespace-nowrap"
                           >
                             Generate
@@ -502,21 +507,21 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                       </div>
                     </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-gray-400 font-orbitron text-[10px] uppercase tracking-widest block">
-                      Contact Information (Discord tag / Phone)
-                    </label>
-                    <input
-                      type="text"
-                      name="contact_info"
-                      value={formData.contact_info}
-                      onChange={(e) => setFormData({...formData, contact_info: e.target.value})}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
-                      required
-                    />
+                    <div className="space-y-1.5">
+                      <label className="text-gray-400 font-orbitron text-[10px] uppercase tracking-widest block">
+                        Contact Information (Discord tag / Phone)
+                      </label>
+                      <input
+                        type="text"
+                        name="contact_info"
+                        value={formData.contact_info}
+                        onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-                  
+
 
                   {/* Player Stats Section */}
                   <div className="border-t border-white/5 pt-5 mt-5">
@@ -572,7 +577,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                       )}
                     </span>
                   </button>
-                  
+
                 </form>
               </div>
             )}
@@ -595,21 +600,19 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                     { title: 'Veteran Warrior', desc: 'Participated in 5+ tournament sectors', unlocked: totalTournaments >= 5, icon: 'fa-medal', color: 'text-pink' },
                     { title: 'Top Challenger', desc: 'Earned a spot on the competitive rankings leaderboard', unlocked: leaderEntry !== undefined, icon: 'fa-crown', color: 'text-accent' },
                   ].map((badge, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`p-6 rounded-xl border flex flex-col justify-between items-center text-center relative overflow-hidden transition-all duration-300 ${
-                        badge.unlocked 
-                          ? 'bg-bg-dark border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.02)]' 
-                          : 'bg-black/40 border-white/5 opacity-40'
-                      }`}
+                    <div
+                      key={idx}
+                      className={`p-6 rounded-xl border flex flex-col justify-between items-center text-center relative overflow-hidden transition-all duration-300 ${badge.unlocked
+                        ? 'bg-bg-dark border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.02)]'
+                        : 'bg-black/40 border-white/5 opacity-40'
+                        }`}
                     >
                       <div className="space-y-4">
-                        <div 
-                          className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto border transition-transform duration-500 ${
-                            badge.unlocked 
-                              ? 'bg-white/5 border-white/20' 
-                              : 'bg-white/5 border-white/5'
-                          }`}
+                        <div
+                          className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto border transition-transform duration-500 ${badge.unlocked
+                            ? 'bg-white/5 border-white/20'
+                            : 'bg-white/5 border-white/5'
+                            }`}
                         >
                           <i className={`fa-solid ${badge.icon} ${badge.unlocked ? badge.color : 'text-gray-600'} text-xl`}></i>
                         </div>
@@ -641,7 +644,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
       </div>
     </div>
   );
-  
+
 };
 
 export default ProfilePage;

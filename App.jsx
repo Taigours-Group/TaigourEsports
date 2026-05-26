@@ -21,8 +21,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
 const App = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const [prevUser, setPrevUser] = useState(null);
-  
+
   // App State - Initialized as empty arrays to prevent slice errors
   const [tournaments, setTournaments] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -30,86 +29,61 @@ const App = () => {
   const [registrations, setRegistrations] = useState([]);
   const [logs, setLogs] = useState([]);
 
+  // Single shared data-fetch function — no duplication
+  const refetchAllData = useCallback(async () => {
+    try {
+      const [tournamentsData, leaderboardData, streamsData, registrationsData, logsData] = await Promise.all([
+        dbService.getTournaments(),
+        dbService.getLeaderboard(),
+        dbService.getStreams(),
+        dbService.getRegistrations(),
+        dbService.getLogs()
+      ]);
+      setTournaments(tournamentsData);
+      setLeaderboard(leaderboardData);
+      setStreams(streamsData);
+      setRegistrations(registrationsData);
+      setLogs(logsData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  }, []);
+
+  // Initial load + Capacitor deep-link / OAuth error handling
   useEffect(() => {
-    // Catch successful Mobile App returning logins (Deep Links)
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    // Handle native mobile deep links (Capacitor)
+    if (window.Capacitor?.Plugins?.App) {
       window.Capacitor.Plugins.App.addListener('appUrlOpen', (data) => {
-        // When the mobile OS forces the app open, we check if it has the Supabase login token
-        if (data.url && data.url.includes('access_token=')) {
-          // Pass the hidden token hash from the OS directly into the web view!
-          // Supabase's JS automatically detects this and logs the user in instantly.
+        if (data.url?.includes('access_token=')) {
           window.location.hash = new URL(data.url).hash;
         }
       });
     }
 
-    // Check for mobile OAuth state errors
+    // Alert on mobile OAuth state errors
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'invalid_request' && params.get('error_code') === 'bad_oauth_state') {
-      alert("Mobile Login Error: Please ensure your computer's local IP address (e.g., http://192.168.x.x:3000) is added to your Supabase project's 'Allowed Redirect URLs' instead of just localhost.");
-      // Clean up the URL
+      alert("Mobile Login Error: Please ensure your computer's local IP address is added to your Supabase project's 'Allowed Redirect URLs'.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    const loadInitialData = async () => {
-      try {
-        const [tournamentsData, leaderboardData, streamsData, registrationsData, logsData] = await Promise.all([
-          dbService.getTournaments(),
-          dbService.getLeaderboard(),
-          dbService.getStreams(),
-          dbService.getRegistrations(),
-          dbService.getLogs()
-        ]);
-        setTournaments(tournamentsData);
-        setLeaderboard(leaderboardData);
-        setStreams(streamsData);
-        setRegistrations(registrationsData);
-        setLogs(logsData);
-      } catch (error) {
-        console.error('Failed to load initial data:', error);
-      } finally {
-        setLoading(false);
-      }
+    const initialLoad = async () => {
+      await refetchAllData();
+      setLoading(false);
     };
+    initialLoad();
+  }, [refetchAllData]);
 
-    loadInitialData();
-  }, []);
-
-  // Re-fetch data when auth state changes (login/logout) - Only when user state actually changes
+  // Re-fetch data when the logged-in user changes (login / logout)
   useEffect(() => {
-    // Skip if this is the initial render (both null)
-    if (prevUser === null && user === null) {
-      return;
-    }
-
-    // Only refetch if user state has actually changed (login or logout)
-    if (prevUser?.id !== user?.id) {
-      const refetchAllData = async () => {
-        try {
-          const [tournamentsData, leaderboardData, streamsData, registrationsData, logsData] = await Promise.all([
-            dbService.getTournaments(),
-            dbService.getLeaderboard(),
-            dbService.getStreams(),
-            dbService.getRegistrations(),
-            dbService.getLogs()
-          ]);
-          setTournaments(tournamentsData);
-          setLeaderboard(leaderboardData);
-          setStreams(streamsData);
-          setRegistrations(registrationsData);
-          setLogs(logsData);
-        } catch (error) {
-          console.error('Failed to refetch data after auth change:', error);
-        }
-      };
-
+    if (!loading) {
       refetchAllData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
-    setPrevUser(user);
-  }, [user, prevUser]);
+  // ── Admin handlers ──────────────────────────────────────────────
 
-  // Handlers wrapped in useCallback and calling API
   const handleSaveTournaments = useCallback(async (data) => {
     try {
       const response = await fetch('/api/admin/tournaments', {
@@ -173,15 +147,13 @@ const App = () => {
   }, []);
 
   const handleSaveRegistrations = useCallback(async (data) => {
-    // For registrations, we don't have a bulk update endpoint, so just update local state
     setRegistrations(data);
     const updatedLogs = await dbService.getLogs();
     setLogs(updatedLogs);
     return true;
   }, []);
 
-  const handleRegister = useCallback(async (reg) => {
-    // Registration is handled by the server endpoint, just update local state
+  const handleRegister = useCallback(async () => {
     const updatedRegistrations = await dbService.getRegistrations();
     setRegistrations(updatedRegistrations);
     const updatedLogs = await dbService.getLogs();
@@ -191,21 +163,10 @@ const App = () => {
   const handleRestore = useCallback(async (data) => {
     const success = await dbService.restoreDatabase(data);
     if (success) {
-      const [tournamentsData, leaderboardData, streamsData, registrationsData, logsData] = await Promise.all([
-        dbService.getTournaments(),
-        dbService.getLeaderboard(),
-        dbService.getStreams(),
-        dbService.getRegistrations(),
-        dbService.getLogs()
-      ]);
-      setTournaments(tournamentsData);
-      setLeaderboard(leaderboardData);
-      setStreams(streamsData);
-      setRegistrations(registrationsData);
-      setLogs(logsData);
+      await refetchAllData();
     }
     return success;
-  }, []);
+  }, [refetchAllData]);
 
   if (loading) return <Preloader />;
 
@@ -214,35 +175,38 @@ const App = () => {
       <div className="min-h-screen relative bg-bg-dark">
         <Header />
         <OnboardingModal />
-        
+
         <main className="min-h-[80vh]">
-          <Routes>
-            <Route path="/" element={<HomePage tournaments={tournaments} leaderboard={leaderboard} registrations={registrations} />} />
-            <Route path="/tournaments" element={<TournamentsPage tournaments={tournaments} registrations={registrations} />} />
-            <Route path="/tournament/:id" element={<TournamentDetailsPage tournaments={tournaments} onRegister={handleRegister} registrations={registrations} />} />
-            <Route path="/leaderboard" element={<LeaderboardPage leaderboard={leaderboard} />} />
-            <Route path="/streams" element={<StreamsPage streams={streams} />} />
-            <Route path="/profile" element={<ProfilePage tournaments={tournaments} registrations={registrations} leaderboard={leaderboard} />} />
-            
-            {/* Admin Route */}
-            <Route path="/admin" element={
-              <AdminGate>
-                <AdminPanel
-                  tournaments={tournaments}
-                  saveTournaments={handleSaveTournaments}
-                  refetchTournaments={refetchTournaments}
-                  leaderboard={leaderboard}
-                  saveLeaderboard={handleSaveLeaderboard}
-                  streams={streams}
-                  saveStreams={handleSaveStreams}
-                  registrations={registrations}
-                  saveRegistrations={handleSaveRegistrations}
-                  systemLogs={logs}
-                  onRestore={handleRestore}
-                />
-              </AdminGate>
-            } />
-          </Routes>
+          {/* Suspense is required to support lazy-loaded pages */}
+          <Suspense fallback={<Preloader />}>
+            <Routes>
+              <Route path="/" element={<HomePage tournaments={tournaments} leaderboard={leaderboard} registrations={registrations} />} />
+              <Route path="/tournaments" element={<TournamentsPage tournaments={tournaments} registrations={registrations} />} />
+              <Route path="/tournament/:id" element={<TournamentDetailsPage tournaments={tournaments} onRegister={handleRegister} registrations={registrations} />} />
+              <Route path="/leaderboard" element={<LeaderboardPage leaderboard={leaderboard} />} />
+              <Route path="/streams" element={<StreamsPage streams={streams} />} />
+              <Route path="/profile" element={<ProfilePage tournaments={tournaments} registrations={registrations} leaderboard={leaderboard} />} />
+
+              {/* Admin Route */}
+              <Route path="/admin" element={
+                <AdminGate>
+                  <AdminPanel
+                    tournaments={tournaments}
+                    saveTournaments={handleSaveTournaments}
+                    refetchTournaments={refetchTournaments}
+                    leaderboard={leaderboard}
+                    saveLeaderboard={handleSaveLeaderboard}
+                    streams={streams}
+                    saveStreams={handleSaveStreams}
+                    registrations={registrations}
+                    saveRegistrations={handleSaveRegistrations}
+                    systemLogs={logs}
+                    onRestore={handleRestore}
+                  />
+                </AdminGate>
+              } />
+            </Routes>
+          </Suspense>
         </main>
 
         <Footer />

@@ -1,8 +1,6 @@
 import { supabase } from './supabaseClient';
 import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 
-export { supabase };
-
 // Helper function to generate unique player ID
 const generatePlayerID = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -28,7 +26,7 @@ class AuthService {
       if (this.isNative()) {
         // 1. Trigger Native Google Sign-In (No Chrome redirect!)
         const result = await GoogleSignIn.signIn();
-        
+
         // 2. Authenticate with Supabase using the ID Token
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
@@ -77,7 +75,7 @@ class AuthService {
 
   async signOut() {
     if (this.isNative()) {
-      await GoogleSignIn.signOut().catch(() => {}); 
+      await GoogleSignIn.signOut().catch(() => { });
     }
     const { error } = await supabase.auth.signOut();
     return error ? { error } : { success: true };
@@ -102,22 +100,40 @@ class AuthService {
     if (!profileData.player_id) {
       profileData.player_id = generatePlayerID();
     }
-    
+
     // Initialize player stats if not provided
-    if (profileData.player_rank === undefined) {
-      profileData.player_rank = 'UNRANKED';
+    if (profileData.rank === undefined) {
+      profileData.rank = 'UNRANKED';
     }
-    if (profileData.player_points === undefined) {
-      profileData.player_points = 0;
+    if (profileData.combat_score === undefined) {
+      profileData.combat_score = 0;
     }
-    if (profileData.player_kill === undefined) {
-      profileData.player_kill = 0;
+    if (profileData.total_kills === undefined) {
+      profileData.total_kills = 0;
     }
 
     const { data, error } = await supabase
       .from('profiles')
       .upsert([{ id: userId, ...profileData }]);
-    
+
+    if (!error) {
+      // Initialize player balance
+      try {
+        await supabase
+          .from('player_balances')
+          .upsert([{
+            user_id: userId,
+            balance: 0,
+            membership_tier: 'none',
+            membership_expires_at: null,
+            total_spent: 0,
+            created_at: new Date().toISOString()
+          }]);
+      } catch (balanceError) {
+        console.error('Error initializing balance:', balanceError);
+      }
+    }
+
     return error ? { error } : { data };
   }
 }

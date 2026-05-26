@@ -1,5 +1,4 @@
- 
-import { GameType } from './types';
+
 
 export const STREAM_HIGHLIGHTS = [
   { time: '07:00 PM', title: 'The Battle of Champions', subtitle: '1st Round Start' },

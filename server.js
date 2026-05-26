@@ -51,6 +51,184 @@ app.use((req, res, next) => {
 
 // --- API Endpoints ---
 
+// Create purchase request (recharge or membership)
+app.post('/api/purchase-request', async (req, res) => {
+  const { user_id, user_email, user_name, type, amount, package_amount, bonus_amount, tier, duration_days, description } = req.body;
+  if (!user_id || !type || !amount) return res.status(400).json({ error: 'Missing fields' });
+
+  try {
+    const payload = {
+      user_id,
+      user_email,
+      user_name,
+      type,
+      amount,
+      package_amount: package_amount || null,
+      bonus_amount: bonus_amount || null,
+      tier: tier || null,
+      duration_days: duration_days || null,
+      description: description || null,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('purchase_requests').insert([payload]);
+    if (error) {
+      console.error('Failed to insert purchase_request:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error creating purchase request:', error);
+    res.status(500).json({ error: 'Failed to create purchase request' });
+  }
+});
+
+// Get purchase requests (admin)
+app.get('/api/purchase-requests', async (req, res) => {
+  const status = req.query.status || null;
+  try {
+    let q = supabase.from('purchase_requests').select('*').order('created_at', { ascending: false });
+    if (status) q = q.eq('status', status);
+    const { data, error } = await q;
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching purchase requests:', error);
+    res.status(500).json({ error: 'Failed to fetch' });
+  }
+});
+
+// Approve request - admin action: adds balance or membership
+app.put('/api/purchase-requests/:id/approve', async (req, res) => {
+  const id = req.params.id;
+  const { admin_notes } = req.body;
+  try {
+    // Fetch the purchase request
+    const { data: reqData, error: fetchError } = await supabase
+      .from('purchase_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchError || !reqData) return res.status(404).json({ error: 'Request not found' });
+
+    const userId = reqData.user_id;
+
+    if (reqData.type === 'recharge') {
+      // Read current balance (safe — maybeSingle never throws 406)
+      const { data: balData, error: balReadErr } = await supabase
+        .from('player_balances')
+        .select('balance')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (balReadErr) throw balReadErr;
+
+      const currentBalance = balData?.balance || 0;
+      const newBalance = currentBalance + (reqData.amount || 0);
+
+      // UPDATE first; if 0 rows affected the player has no record yet → INSERT
+      const { data: updateResult, error: updateErr } = await supabase
+        .from('player_balances')
+        .update({ balance: newBalance })
+        .eq('user_id', userId)
+        .select();
+      if (updateErr) throw updateErr;
+
+      if (!updateResult || updateResult.length === 0) {
+        const { error: insertErr } = await supabase
+          .from('player_balances')
+          .insert([{
+            user_id: userId,
+            balance: newBalance,
+            membership_tier: 'none',
+            membership_expires_at: null,
+            total_spent: 0,
+            created_at: new Date().toISOString()
+          }]);
+        if (insertErr) throw insertErr;
+      }
+
+      // Record the recharge transaction
+      await supabase.from('transactions').insert([{
+        user_id: userId,
+        type: 'recharge',
+        amount: reqData.amount,
+        status: 'completed',
+        description: `Admin approved recharge #${id}`,
+        created_at: new Date().toISOString()
+      }]);
+
+    } else if (reqData.type === 'membership') {
+      const durationDays = reqData.duration_days || 30;
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + durationDays);
+
+      // UPDATE first; if 0 rows affected → INSERT (new player)
+      const { data: updateResult, error: memUpdErr } = await supabase
+        .from('player_balances')
+        .update({
+          membership_tier: reqData.tier,
+          membership_expires_at: expiresAt.toISOString()
+        })
+        .eq('user_id', userId)
+        .select();
+      if (memUpdErr) throw memUpdErr;
+
+      if (!updateResult || updateResult.length === 0) {
+        const { error: memInsErr } = await supabase
+          .from('player_balances')
+          .insert([{
+            user_id: userId,
+            balance: 0,
+            membership_tier: reqData.tier,
+            membership_expires_at: expiresAt.toISOString(),
+            total_spent: 0,
+            created_at: new Date().toISOString()
+          }]);
+        if (memInsErr) throw memInsErr;
+      }
+
+      // Record the membership transaction
+      await supabase.from('transactions').insert([{
+        user_id: userId,
+        type: 'membership_purchase',
+        amount: reqData.amount || 0,
+        status: 'completed',
+        description: `Admin approved membership: ${reqData.tier}`,
+        created_at: new Date().toISOString()
+      }]);
+    }
+
+    // Mark the request as approved
+    const { error: updErr } = await supabase
+      .from('purchase_requests')
+      .update({ status: 'approved', admin_notes: admin_notes || null })
+      .eq('id', id);
+    if (updErr) throw updErr;
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error approving request:', error);
+    res.status(500).json({ error: error.message || 'Failed to approve request' });
+  }
+});
+
+// Decline request
+app.put('/api/purchase-requests/:id/decline', async (req, res) => {
+  const id = req.params.id;
+  const { admin_notes } = req.body;
+  try {
+    const { error } = await supabase.from('purchase_requests').update({ status: 'declined', admin_notes }).eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error declining request:', error);
+    res.status(500).json({ error: 'Failed to decline request' });
+  }
+});
+
+
 // Get all tournaments
 app.get('/api/tournaments', async (req, res) => {
   try {
@@ -112,7 +290,7 @@ app.get('/api/streams', async (req, res) => {
 // Tournament registration
 app.post('/api/register', async (req, res) => {
   try {
-    const { tournamentid, playername, playerage, playeremail, playercontact, gameuid, promocode, player_id } = req.body;
+    const { tournamentid, playername, playerage, playeremail, playercontact, gameuid, promo_code, player_id } = req.body;
 
     if (!tournamentid || !playername || !playerage || !playeremail || !playercontact || !gameuid) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -164,7 +342,7 @@ app.post('/api/register', async (req, res) => {
       playeremail,
       playercontact,
       gameuid,
-      Promo_Code: promocode || null,
+      Promo_Code: promo_code || null,
       player_id: player_id || null,
       registrationdate: new Date().toISOString()
     };
@@ -607,6 +785,139 @@ app.delete('/api/admin/leaderboard/:id', async (req, res) => {
   }
 });
 
+// Admin: Update Player Balance
+app.post('/api/admin/player/:userId/balance', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { newBalance, reason } = req.body;
+
+    const { data: balanceData } = await supabase
+      .from('player_balances')
+      .select('balance')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const oldBalance = balanceData?.balance || 0;
+    const difference = newBalance - oldBalance;
+
+    const { data, error } = await supabase
+      .from('player_balances')
+      .update({ balance: newBalance })
+      .eq('user_id', userId)
+      .select();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    await supabase.from('transactions').insert([{
+      user_id: userId,
+      type: 'admin_adjustment',
+      amount: difference,
+      status: 'completed',
+      description: reason || 'Admin adjustment',
+      created_at: new Date().toISOString()
+    }]);
+
+    res.json({ success: true, data: data?.[0] });
+  } catch (error) {
+    console.error('Error updating player balance:', error);
+    res.status(500).json({ error: 'Failed to update balance' });
+  }
+});
+
+// Admin: Update Player Membership
+app.post('/api/admin/player/:userId/membership', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { membershipTier, durationDays } = req.body;
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (parseInt(durationDays) || 30));
+
+    const { data, error } = await supabase
+      .from('player_balances')
+      .update({
+        membership_tier: membershipTier,
+        membership_expires_at: expiresAt.toISOString()
+      })
+      .eq('user_id', userId)
+      .select();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    await supabase.from('transactions').insert([{
+      user_id: userId,
+      type: 'membership_purchase',
+      amount: 0,
+      status: 'completed',
+      description: `Admin set membership: ${membershipTier}`,
+      created_at: new Date().toISOString()
+    }]);
+
+    res.json({ success: true, data: data?.[0] });
+  } catch (error) {
+    console.error('Error updating player membership:', error);
+    res.status(500).json({ error: 'Failed to update membership' });
+  }
+});
+
+// Admin: Update Player Stats & Achievements
+app.post('/api/admin/player/:userId/stats', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const profileUpdates = req.body;
+
+    const { data: currentProfile, error: fetchErr } = await supabase
+      .from('profiles')
+      .select('achievements')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // If there is an error fetching, the columns might not exist. 
+    // We will still try to update to gracefully fail with a detailed error.
+
+    let currentAchievements = currentProfile?.achievements || [];
+    if (!Array.isArray(currentAchievements)) currentAchievements = [];
+
+    const newAchievements = new Set(currentAchievements);
+    const kills = parseInt(profileUpdates.total_kills) || 0;
+    const combat = parseInt(profileUpdates.combat_score) || 0;
+    const rank = (profileUpdates.rank || '').toString().toLowerCase();
+
+    if (kills >= 10) newAchievements.add('FIRST_BLOOD');
+    if (kills >= 50) newAchievements.add('ASSASSIN');
+    if (kills >= 100) newAchievements.add('VETERAN');
+    if (kills >= 500) newAchievements.add('TERMINATOR');
+    if (combat >= 1000) newAchievements.add('GLADIATOR');
+    if (combat >= 5000) newAchievements.add('WARLORD');
+    if (['diamond', 'crown', 'ace', 'conqueror', 'master', 'grandmaster'].includes(rank)) {
+      newAchievements.add('ELITE_RANK');
+    }
+
+    // Merge manual achievement overrides if provided
+    if (Array.isArray(profileUpdates.achievements)) {
+      profileUpdates.achievements.forEach(a => newAchievements.add(a));
+    }
+
+    profileUpdates.achievements = Array.from(newAchievements);
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(profileUpdates)
+      .eq('id', userId)
+      .select();
+
+    if (error) {
+      console.error('Error updating stats (Supabase):', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true, data: data?.[0] });
+  } catch (error) {
+    console.error('Error updating player stats:', error);
+    res.status(500).json({ error: 'Failed to update stats. Ensure the database migration was run.' });
+  }
+});
+
 // Streams CRUD
 app.post('/api/admin/streams/add', async (req, res) => {
   try {
@@ -746,6 +1057,262 @@ app.delete('/api/admin/registrations/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting registration:', error);
     res.status(500).json({ error: 'Failed to delete registration' });
+  }
+});
+
+// --- BALANCE & MEMBERSHIP API ROUTES ---
+
+// Get player balance
+app.get('/api/balance/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { data, error } = await supabase
+      .from('player_balances')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching balance:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Return default balance if not found
+    if (error?.code === 'PGRST116') {
+      return res.json({
+        user_id: userId,
+        balance: 0,
+        membership_tier: 'none',
+        membership_expires_at: null,
+        total_spent: 0,
+        created_at: new Date().toISOString()
+      });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    res.status(500).json({ error: 'Failed to fetch balance' });
+  }
+});
+
+// Initialize player balance
+app.post('/api/balance/init/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { data, error } = await supabase
+      .from('player_balances')
+      .upsert([{
+        user_id: userId,
+        balance: 0,
+        membership_tier: 'none',
+        membership_expires_at: null,
+        total_spent: 0,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+
+    if (error) {
+      console.error('Error initializing balance:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('Error initializing balance:', error);
+    res.status(500).json({ error: 'Failed to initialize balance' });
+  }
+});
+
+// Add balance (recharge)
+app.post('/api/balance/add/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, description } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Valid amount is required' });
+    }
+
+    // Get current balance
+    const { data: balanceData } = await supabase
+      .from('player_balances')
+      .select('balance')
+      .eq('user_id', userId)
+      .single();
+
+    const newBalance = (balanceData?.balance || 0) + amount;
+
+    // Update balance
+    const { data: updateData, error: updateError } = await supabase
+      .from('player_balances')
+      .update({ balance: newBalance })
+      .eq('user_id', userId)
+      .select();
+
+    if (updateError) {
+      console.error('Error updating balance:', updateError);
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    // Record transaction
+    await supabase.from('transactions').insert([{
+      user_id: userId,
+      type: 'recharge',
+      amount,
+      status: 'completed',
+      description: description || 'Account recharge',
+      created_at: new Date().toISOString()
+    }]);
+
+    res.json({ success: true, data: updateData[0] });
+  } catch (error) {
+    console.error('Error adding balance:', error);
+    res.status(500).json({ error: 'Failed to add balance' });
+  }
+});
+
+// Admin: Update player balance directly
+app.put('/api/admin/balance/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { newBalance, reason } = req.body;
+
+    if (newBalance === undefined || newBalance < 0) {
+      return res.status(400).json({ error: 'Valid balance is required' });
+    }
+
+    // Get old balance for transaction difference
+    const { data: oldBalanceData } = await supabase
+      .from('player_balances')
+      .select('balance')
+      .eq('user_id', userId)
+      .single();
+
+    const oldBalance = oldBalanceData?.balance || 0;
+    const difference = newBalance - oldBalance;
+
+    // Update balance
+    const { data, error } = await supabase
+      .from('player_balances')
+      .update({ balance: newBalance })
+      .eq('user_id', userId)
+      .select();
+
+    if (error) {
+      console.error('Error updating balance:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Record admin transaction
+    await supabase.from('transactions').insert([{
+      user_id: userId,
+      type: 'admin_adjustment',
+      amount: difference,
+      status: 'completed',
+      description: reason || 'Admin adjustment',
+      created_at: new Date().toISOString()
+    }]);
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('Error updating balance:', error);
+    res.status(500).json({ error: 'Failed to update balance' });
+  }
+});
+
+// Admin: Update membership
+app.put('/api/admin/membership/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { membershipTier, durationDays } = req.body;
+
+    if (!membershipTier) {
+      return res.status(400).json({ error: 'Membership tier is required' });
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (durationDays || 30));
+
+    const { data, error } = await supabase
+      .from('player_balances')
+      .update({
+        membership_tier: membershipTier,
+        membership_expires_at: expiresAt.toISOString()
+      })
+      .eq('user_id', userId)
+      .select();
+
+    if (error) {
+      console.error('Error updating membership:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Record transaction
+    await supabase.from('transactions').insert([{
+      user_id: userId,
+      type: 'membership_purchase',
+      amount: 0,
+      status: 'completed',
+      description: `Admin set membership: ${membershipTier}`,
+      created_at: new Date().toISOString()
+    }]);
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('Error updating membership:', error);
+    res.status(500).json({ error: 'Failed to update membership' });
+  }
+});
+
+// Get all player balances (admin)
+app.get('/api/admin/balances', async (req, res) => {
+  try {
+    const limit = req.query.limit || 100;
+    const offset = req.query.offset || 0;
+
+    const { data, error } = await supabase
+      .from('player_balances')
+      .select('*, profiles(username, player_id)')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Error fetching balances:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching balances:', error);
+    res.status(500).json({ error: 'Failed to fetch balances' });
+  }
+});
+
+// Get transaction history
+app.get('/api/transactions/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = req.query.limit || 50;
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching transactions:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 

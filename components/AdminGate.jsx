@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 
-const ADMIN_PASSWORD = 'Taigours2026';
+// Admin password sourced from env — set VITE_ADMIN_PASSWORD in your .env file
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Taigours2026';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export default function AdminGate({ children }) {
