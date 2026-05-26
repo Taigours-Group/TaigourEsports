@@ -74,11 +74,12 @@ const Footer = () => (
 
       {/* Footer Bottom - Divider and Copyright */}
       <div className="border-t border-white/5 pt-6 md:pt-8 space-y-2 md:space-y-3 text-center font-rajdhani text-xs md:text-sm">
-        <p className="text-gray-500">
-          &copy; 2025 Taigour's E-Sports. All rights reserved.
+        <p className="text-gray-600">
+          Serving the nation since 2024!
         </p>
         <p className="text-gray-600 text-[10px] md:text-xs">
-          Version 7.0.0 | Developed By: <a href="https://taigra-nexus-labs.onrender.com" className="text-primary font-bold" target='_blank'>Taigra Nexus Labs Pvt. Ltd. Janakpur, Nepal</a>
+          &copy; 2026 Taigour's E-Sports. All rights reserved. <br />
+          Version 7.0.1 | Developed By: <a href="https://taigra-nexus-labs.onrender.com" className="text-primary font-bold" target='_blank'>Taigra Nexus Labs Pvt. Ltd. Janakpur, Nepal</a>
         </p>
       </div>
     </div>

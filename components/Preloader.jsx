@@ -9,12 +9,13 @@ const Preloader = () => {
 
   const terminalLines = [
     'Initializing Core Systems...',
-    'Syncing Tactical Data...',
-    'Bypassing Security Firewalls...',
-    'Loading Combat Modules...',
-    'Establishing Satellite Uplink...',
-    'Sector Scan Complete.',
-    'Ready for Deployment.'
+    'Ready to Game.',
+    'Creating the Battle Ground...',
+    'The Best is Yet to Come...',
+    'Team is Everything...',
+    'Respect...Honor...Loyalty...',
+    'Taigra Nexus Labs Pvt. Ltd.',
+    'Ready to Serve the Nation with Honor and Integrity...'
   ];
 
   useEffect(() => {
@@ -118,9 +119,9 @@ const Preloader = () => {
 
       {/* Footer System Info */}
       <div className="absolute bottom-8 text-[9px] text-gray-700 font-mono tracking-widest uppercase flex gap-8">
-        <span>Nexus_OS_v2.0.6</span>
+        <span>Nexus_OS_v7.0.1</span>
         <span className="hidden md:inline">Secure_Terminal_01</span>
-        <span>LAT_26.7271_LON_85.9221</span>
+        <span>LAT_26.7270_LON_85.9226</span>
       </div>
     </div>
   );
