@@ -24,11 +24,11 @@ const AdminPanel = ({
   // Initial States for New Records
   const initialTournament = {
     title: '', game: 'Free Fire', type: 'freefire', location: 'Nepal',
-    prize: 'रु 1,000', entry_fee: 'रु 100', date: '', time: '07:00 PM',
+    prize: '◈ 1,000', entry_fee: '◈ 100', date: '', time: '07:00 PM',
     registration_start_date: '', registration_end_date: '',
     registration_url: '#', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800',
     description: '', rules: ['No Emulators allowed', 'Fair play protocol active'],
-    prize_breakdown: [{ position: '1st', reward: 'रु 600' }, { position: '2nd', reward: 'रु 400' }],
+    prize_breakdown: [{ position: '1st', reward: '◈ 600' }, { position: '2nd', reward: '◈ 400' }],
     max_slots: 48, stream_id: ''
   };
 
@@ -471,7 +471,7 @@ const AdminPanel = ({
                     <i className="fa-solid fa-trophy text-6xl md:text-8xl"></i>
                   </div>
                   <div className="text-gray-500 font-bold text-[9px] md:text-xs uppercase tracking-widest mb-2">Total Prize Vault</div>
-                  <div className="text-4xl md:text-5xl font-orbitron font-black text-primary">रु {stats.totalPrize.toLocaleString()}</div>
+                  <div className="text-4xl md:text-5xl font-orbitron font-black text-primary">◈ {stats.totalPrize.toLocaleString()}</div>
                   <div className="mt-4 text-[9px] md:text-[10px] text-primary font-bold uppercase tracking-widest">Combat Rewards Assigned</div>
                 </div>
                 <div className="bg-bg-card p-6 md:p-8 rounded-2xl border border-white/5 relative overflow-hidden group sm:col-span-2 lg:col-span-1">

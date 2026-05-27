@@ -52,10 +52,12 @@ const PlayerBalance = () => {
           user_email: user.email,
           user_name: user.user_metadata?.full_name || 'Player',
           type: REQUEST_TYPES.RECHARGE,
+          // Backend expects amount (total credited) + package_amount/bonus_amount
           amount: selectedPackage.amount + selectedPackage.bonus,
           package_amount: selectedPackage.amount,
           bonus_amount: selectedPackage.bonus,
-          description: `Recharge request for रु${selectedPackage.amount} + रु${selectedPackage.bonus} bonus`
+          cost: selectedPackage.cost,
+          description: `Recharge request for ◈${selectedPackage.amount} + ◈${selectedPackage.bonus} bonus`
         })
       });
 
@@ -85,7 +87,7 @@ const PlayerBalance = () => {
           tier: selectedMembership,
           amount: MEMBERSHIP_BENEFITS[selectedMembership].price,
           duration_days: 30,
-          description: `Membership request for ${MEMBERSHIP_BENEFITS[selectedMembership].name} (रु${MEMBERSHIP_BENEFITS[selectedMembership].price})`
+          description: `Membership request for ${MEMBERSHIP_BENEFITS[selectedMembership].name} (◈${MEMBERSHIP_BENEFITS[selectedMembership].price})`
         })
       });
 
@@ -115,7 +117,7 @@ const PlayerBalance = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-4 md:p-8">
         <i className="fa-solid fa-spinner fa-spin text-primary text-2xl mr-3"></i>
         <span className="text-gray-400">Loading balance...</span>
       </div>
@@ -125,16 +127,16 @@ const PlayerBalance = () => {
   return (
     <div className="space-y-6">
       {/* Main Balance Card */}
-      <div className="bg-gradient-to-br from-primary/20 to-pink/10 border border-primary/30 rounded-2xl p-6 md:p-8">
+      <div className="bg-gradient-to-br from-primary/20 to-pink/10 border border-primary/30 rounded-2xl p-3 md:p-5">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-gray-400 text-sm uppercase tracking-widest mb-2">Available Balance</h3>
-            <div className="text-4xl md:text-5xl font-orbitron font-black text-primary">
-              रु {playerBalance?.balance?.toLocaleString() || '0'}
+            <h3 className="text-gray-400 text-[12px] md:text-sm uppercase md:tracking-widest tracking-[0.4px]">Available Balance</h3>
+            <div className="text-2xl md:text-4xl font-orbitron font-black text-primary">
+              ◈ {playerBalance?.balance?.toLocaleString() || '0'} TGC
             </div>
           </div>
           <div className="text-right">
-            <div className="text-gray-500 text-xs uppercase tracking-widest mb-2">Membership Status</div>
+            <div className="text-gray-400 text-[12px] md:text-sm uppercase md:tracking-widest tracking-[0.4px]">Membership Status</div>
             <div className={`text-lg font-bold ${
               playerBalance?.membership_tier === 'none' 
                 ? 'text-gray-400' 
@@ -151,16 +153,16 @@ const PlayerBalance = () => {
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 md:gap-4">
           <button
             onClick={() => setShowRechargeModal(true)}
-            className="px-4 py-3 bg-primary text-dark rounded-lg font-bold hover:bg-primary/80 transition-all text-sm"
+            className="px-3 py-2 md:px-4 md:py-3 bg-primary text-dark rounded-lg font-bold hover:bg-primary/80 transition-all text-[13px] md:text-sm"
           >
             <i className="fa-solid fa-wallet mr-2"></i>Recharge Account
           </button>
           <button
             onClick={() => setShowMembershipModal(true)}
-            className="px-4 py-3 bg-pink text-white rounded-lg font-bold hover:bg-pink/80 transition-all text-sm"
+            className="px-3 py-2 md:px-4 md:py-3 bg-pink text-white rounded-lg font-bold hover:bg-pink/80 transition-all text-[13px] md:text-sm"
           >
             <i className="fa-solid fa-crown mr-2"></i>Get Membership
           </button>
@@ -168,10 +170,10 @@ const PlayerBalance = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-white/10">
+      <div className="flex border-b border-white/10">
         <button
           onClick={() => setActiveTab('balance')}
-          className={`px-4 py-3 font-bold text-sm uppercase tracking-widest border-b-2 transition-colors ${
+          className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
             activeTab === 'balance'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-400 hover:text-white'
@@ -181,7 +183,7 @@ const PlayerBalance = () => {
         </button>
         <button
           onClick={() => setActiveTab('membership')}
-          className={`px-4 py-3 font-bold text-sm uppercase tracking-widest border-b-2 transition-colors ${
+          className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
             activeTab === 'membership'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-400 hover:text-white'
@@ -191,7 +193,7 @@ const PlayerBalance = () => {
         </button>
         <button
           onClick={() => setActiveTab('stats')}
-          className={`px-4 py-3 font-bold text-sm uppercase tracking-widest border-b-2 transition-colors ${
+          className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
             activeTab === 'stats'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-400 hover:text-white'
@@ -199,35 +201,46 @@ const PlayerBalance = () => {
         >
           <i className="fa-solid fa-chart-pie mr-2"></i>Stats
         </button>
+
+        <button
+          onClick={() => setActiveTab('store')}
+          className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
+            activeTab === 'store'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          <i className="fa-solid fa-store mr-2"></i>Store
+        </button>
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[400px]">
+      <div className="min-h-[100px]">
         {/* Balance Tab */}
         {activeTab === 'balance' && (
           <div className="space-y-4">
             <h4 className="text-lg font-orbitron font-black text-white uppercase tracking-widest mb-4">
               Recharge Packages
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {RECHARGE_PACKAGES.map((pkg, idx) => (
                 <div
                   key={idx}
                   className="bg-bg-card border border-white/10 rounded-lg p-4 hover:border-primary/50 transition-all cursor-pointer group"
                   onClick={() => handleRechargeClick(pkg)}
                 >
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
                     <i className={`fa-solid ${pkg.icon}`}></i>
                   </div>
                   <div className="text-gray-400 text-xs uppercase tracking-widest mb-2">Package</div>
-                  <div className="text-2xl font-orbitron font-black text-white mb-2">
-                    रु {pkg.amount}
+                  <div className="text-[15px] md:text-2xl font-orbitron font-black text-white">
+                    ◈ {pkg.amount} TGC
                   </div>
-                  <div className="text-primary font-bold text-sm mb-3">
-                    <i className="fa-solid fa-gift mr-2"></i>+रु {pkg.bonus} Bonus
+                  <div className="text-primary font-bold text-[13px] md:text-xs mb-3">
+                    <i className="fa-solid fa-gift mr-2"></i>+◈ {pkg.bonus} Bonus
                   </div>
-                  <div className="text-xs text-gray-500 bg-white/5 p-2 rounded">
-                    Total: <span className="text-yellow-400 font-bold">रु {pkg.amount + pkg.bonus}</span>
+                  <div className="text-xs text-gray-400 bg-white/5 p-2 rounded">
+                    Total Cost: <span className="text-yellow-400 font-bold">रु {pkg.cost}</span>
                   </div>
                 </div>
               ))}
@@ -287,7 +300,7 @@ const PlayerBalance = () => {
             <div className="bg-bg-card border border-white/10 rounded-lg p-4">
               <div className="text-gray-500 text-xs uppercase tracking-widest mb-2">Total Spent</div>
               <div className="text-2xl font-orbitron font-black text-pink">
-                रु {playerBalance?.total_spent?.toLocaleString() || '0'}
+                ◈ {playerBalance?.total_spent?.toLocaleString() || '0'}
               </div>
             </div>
             <div className="bg-bg-card border border-white/10 rounded-lg p-4">
@@ -306,6 +319,18 @@ const PlayerBalance = () => {
         )}
       </div>
 
+      {/*Store Tab*/}
+      {activeTab === 'store' && (
+        <div className="flex items-center justify-center p-10">
+          <div className="text-gray-400 text-center">
+            <i className="fa-solid fa-store text-4xl mb-4"></i>
+            <div className="text-lg font-bold">Store Coming Soon!</div>
+            <div className="text-sm mt-1">Exciting items and offers will be available here soon. Stay tuned!</div>
+          </div>
+        </div>
+      )}
+
+
       {/* Recharge Modal */}
       {showRechargeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -318,17 +343,17 @@ const PlayerBalance = () => {
             {selectedPackage && (
               <div className="space-y-4 mb-6 p-4 bg-white/5 rounded-lg">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Package Amount:</span>
-                  <span className="font-bold text-white">रु {selectedPackage.amount}</span>
+                  <span className="text-gray-400">Package amount:</span>
+                  <span className="font-bold text-white">◈ {selectedPackage.amount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Bonus:</span>
-                  <span className="font-bold text-primary">+रु {selectedPackage.bonus}</span>
+                  <span className="font-bold text-primary">+◈ {selectedPackage.bonus}</span>
                 </div>
                 <div className="border-t border-white/10 pt-4 flex justify-between">
                   <span className="font-bold text-white">Total:</span>
                   <span className="font-orbitron font-black text-yellow-400 text-lg">
-                    रु {selectedPackage.amount + selectedPackage.bonus}
+                    ◈ {selectedPackage.amount + selectedPackage.bonus}
                   </span>
                 </div>
               </div>
@@ -388,7 +413,7 @@ const PlayerBalance = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-400">Price:</span>
                   <span className="font-orbitron font-black text-primary">
-                    रु {MEMBERSHIP_BENEFITS[selectedMembership].price}
+                    ◈ {MEMBERSHIP_BENEFITS[selectedMembership].price}
                   </span>
                 </div>
                 <div className="border-t border-white/10 pt-4">

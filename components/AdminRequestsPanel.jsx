@@ -95,7 +95,7 @@ const AdminRequestsPanel = () => {
 
   // Calculate stats
   const pendingCount = requests.filter(r => r.status === REQUEST_STATUS.PENDING).length;
-  const totalAmount = requests.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const totalamount = requests.reduce((sum, r) => sum + (r.amount || 0), 0);
 
   if (loading) {
     return (
@@ -123,8 +123,8 @@ const AdminRequestsPanel = () => {
             <div className="text-2xl font-orbitron font-black text-primary">{requests.length}</div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-            <div className="text-gray-500 text-xs uppercase tracking-widest mb-1">Total Amount</div>
-            <div className="text-2xl font-orbitron font-black text-pink">रु {totalAmount.toLocaleString()}</div>
+            <div className="text-gray-500 text-xs uppercase tracking-widest mb-1">Total amount</div>
+            <div className="text-2xl font-orbitron font-black text-pink">◈ {totalamount.toLocaleString()}</div>
           </div>
         </div>
       </div>
@@ -174,9 +174,9 @@ const AdminRequestsPanel = () => {
                   </div>
                 </div>
 
-                {/* Center: Amount & Type */}
+                {/* Center: amount & Type */}
                 <div className="text-right mr-4">
-                  <div className="font-orbitron font-black text-lg text-primary">रु {request.amount}</div>
+                  <div className="font-orbitron font-black text-lg text-primary">◈ {request.amount}</div>
                   <div className="text-xs text-gray-400">{getTypeLabel(request.type)}</div>
                 </div>
 
@@ -216,16 +216,16 @@ const AdminRequestsPanel = () => {
                     {request.type === REQUEST_TYPES.RECHARGE ? (
                       <>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Package Amount:</span>
-                          <span className="font-bold">रु {request.package_amount}</span>
+                          <span className="text-gray-400">Package amount:</span>
+                          <span className="font-bold">◈ {request.package_amount}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Bonus Amount:</span>
-                          <span className="font-bold text-primary">+रु {request.bonus_amount}</span>
+                          <span className="text-gray-400">Bonus amount:</span>
+                          <span className="font-bold text-primary">+◈ {request.bonus_amount}</span>
                         </div>
                         <div className="border-t border-white/10 pt-2 flex justify-between text-sm font-bold">
                           <span>Total to Add:</span>
-                          <span className="text-yellow-400">रु {request.amount}</span>
+                          <span className="text-yellow-400">◈ {request.amount}</span>
                         </div>
                       </>
                     ) : (
@@ -236,7 +236,7 @@ const AdminRequestsPanel = () => {
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-400">Price:</span>
-                          <span className="font-bold text-primary">रु {request.amount}</span>
+                          <span className="font-bold text-primary">◈ {request.amount}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-400">Duration:</span>

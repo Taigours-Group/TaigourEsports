@@ -87,7 +87,7 @@ const HomePage = ({ tournaments, leaderboard, registrations }) => {
           {[
             { label: 'Total Warriors', val: '1,500+', icon: 'fa-users', color: 'text-primary' },
             { label: 'Tournaments', val: '48+', icon: 'fa-crosshairs', color: 'text-pink' },
-            { label: 'Prize Awarded', val: 'रु 50K+', icon: 'fa-trophy', color: 'text-accent' },
+            { label: 'Prize Awarded', val: '◈ 50K+', icon: 'fa-trophy', color: 'text-accent' },
             { label: 'Lobbies Live', val: '12', icon: 'fa-broadcast-tower', color: 'text-tertiary' }
           ].map((stat, i) => (
             <div key={i} className="text-center group p-2 md:p-4">

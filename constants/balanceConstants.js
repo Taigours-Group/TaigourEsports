@@ -43,11 +43,11 @@ export const MEMBERSHIP_BENEFITS = {
 
 // Recharge Packages
 export const RECHARGE_PACKAGES = [
-  { amount: 100, bonus: 10, icon: 'fa-wallet' },
-  { amount: 500, bonus: 60, icon: 'fa-money-bill' },
-  { amount: 1000, bonus: 150, icon: 'fa-coins' },
-  { amount: 2500, bonus: 500, icon: 'fa-money-bill-wave' },
-  { amount: 5000, bonus: 1250, icon: 'fa-gem' }
+  { amount: 100, bonus: 10, cost: 99, icon: 'fa-wallet' },
+  { amount: 500, bonus: 60, cost: 499, icon: 'fa-money-bill' },
+  { amount: 1000, bonus: 150, cost: 999, icon: 'fa-coins' },
+  { amount: 2500, bonus: 500, cost: 2599, icon: 'fa-money-bill-wave' },
+  { amount: 5000, bonus: 1250, cost: 5999, icon: 'fa-gem' }
 ];
 
 // Transaction Types

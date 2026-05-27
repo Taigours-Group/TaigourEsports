@@ -53,7 +53,7 @@ app.use((req, res, next) => {
 
 // Create purchase request (recharge or membership)
 app.post('/api/purchase-request', async (req, res) => {
-  const { user_id, user_email, user_name, type, amount, package_amount, bonus_amount, tier, duration_days, description } = req.body;
+  const { user_id, user_email, user_name, type, amount, package_amount, bonus_amount, cost, tier, duration_days, description } = req.body;
   if (!user_id || !type || !amount) return res.status(400).json({ error: 'Missing fields' });
 
   try {
@@ -65,6 +65,7 @@ app.post('/api/purchase-request', async (req, res) => {
       amount,
       package_amount: package_amount || null,
       bonus_amount: bonus_amount || null,
+      cost: cost || null,
       tier: tier || null,
       duration_days: duration_days || null,
       description: description || null,
@@ -154,6 +155,7 @@ app.put('/api/purchase-requests/:id/approve', async (req, res) => {
         user_id: userId,
         type: 'recharge',
         amount: reqData.amount,
+        cost: reqData.cost,
         status: 'completed',
         description: `Admin approved recharge #${id}`,
         created_at: new Date().toISOString()
@@ -194,6 +196,7 @@ app.put('/api/purchase-requests/:id/approve', async (req, res) => {
         user_id: userId,
         type: 'membership_purchase',
         amount: reqData.amount || 0,
+        cost: reqData.cost || 0,
         status: 'completed',
         description: `Admin approved membership: ${reqData.tier}`,
         created_at: new Date().toISOString()

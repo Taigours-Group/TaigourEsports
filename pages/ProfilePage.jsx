@@ -8,7 +8,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
   const { user, profile, loading, loginWithGoogle, logout, reloadProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('deployments');
+  const [activeTab, setActiveTab] = useState('wallet');
   const [formData, setFormData] = useState({
     full_name: '',
     age: '',
@@ -154,9 +154,9 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
 
     const { error } = await authService.createProfile(user.id, profileData);
     if (error) {
-      setErrorMsg('Failed to update credentials: ' + error.message);
+      setErrorMsg('Failed to update Settings: ' + error.message);
     } else {
-      setSuccessMsg('Warrior credentials saved successfully!');
+      setSuccessMsg('Warrior Settings saved successfully!');
       await reloadProfile();
     }
     setUpdating(false);
@@ -211,16 +211,14 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
 
             {/* Profile Info details */}
             <div className="flex-1 text-center md:text-left space-y-2 mt-2">
-              <span className="text-primary font-orbitron font-bold text-xs uppercase tracking-[0.3em] block">
-                PLAYER STATUS SHEET
-              </span>
-              <h1 className="text-3xl md:text-5xl font-orbitron font-black text-white uppercase tracking-tighter">
+              <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
                 {profile?.full_name || user.user_metadata?.full_name || 'Player One'}
               </h1>
               <p className="text-gray-400 font-rajdhani text-sm md:text-base flex flex-wrap justify-center md:justify-start items-center gap-2">
                 <span>{user.email}</span>
                 <span className="text-white/10 hidden md:inline">|</span>
-                <span className="text-gray-500 uppercase tracking-widest font-orbitron text-xs">
+                <br />
+                <span className="text-gray-400 uppercase  font-rajdhani text-xs">
                   Age: {profile?.age || 'Unset'}
                 </span>
               </p>
@@ -229,7 +227,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
 
               <div className="flex items-center gap-1 mt-1 justify-center md:justify-start">
                 <div className="px-3 py-2 bg-white/5 border border-primary/20 rounded-lg inline-block">
-                  <span className="text-[9px] font-orbitron font-bold uppercase tracking-wider text-gray-400">Player ID: </span>
+                  <span className="text-[9px] font-orbitron font-bold uppercase text-gray-400">Player ID: </span>
                   <span className="text-[10px] font-mono font-bold text-primary">{playerID}</span>
                 </div>
                 <button
@@ -241,23 +239,23 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
               </div>
 
               {/* Badges */}
-              <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-3">
-                <span className="px-3 py-1 bg-white/5 border border-white/10 text-[9px] font-orbitron font-bold uppercase tracking-wider text-gray-300 rounded">
-                  <i className="fa-solid fa-crown text-accent mr-1.5"></i> Rank {playerRank}
-                </span>
-                <span className="px-3 py-1 bg-white/5 border border-white/10 text-[9px] font-orbitron font-bold uppercase tracking-wider text-gray-300 rounded">
-                  <i className="fa-solid fa-award text-primary mr-1.5"></i> {playerPoints} pts
-                </span>
-                <span className="px-3 py-1 bg-white/5 border border-white/10 text-[9px] font-orbitron font-bold uppercase tracking-wider text-gray-300 rounded">
-                  <i className="fa-solid fa-gun text-pink mr-1.5"></i> {playerKills} Kills
-                </span>
-              </div>
+              
             </div>
           </div>
         </div>
 
         {/* ─── Profile Stats Dashboard grid ─── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-20">
+          <p className='font-orbitron p-2 font-bold text-[12px] rounded uppercase tracking-wider  md:hidden transition-colors'
+          style={{
+                  background:'linear-gradient(180deg, rgba(0, 213, 255, 0.2) 0%, rgba(0, 234, 255, 0.27) 100%)'
+                    
+                }}
+          >
+            Player Stats <i className="fa-solid fa-chevron-right"></i>
+          </p>
+          <div className="col-span-2 md:col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          
           {[
             { label: 'ARENA ENTRIES', val: totalTournaments, icon: 'fa-trophy', color: 'text-primary' },
             { label: 'ACTIVE SECTORS', val: activeSectors, icon: 'fa-crosshairs', color: 'text-tertiary' },
@@ -266,60 +264,69 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
           ].map((stat, idx) => (
             <div
               key={idx}
-              className="glass p-5 rounded-xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-colors"
+              className="glass p-3.5 rounded-xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-colors"
             >
               <div className="space-y-1">
-                <span className="text-[9px] font-orbitron font-bold text-gray-500 uppercase tracking-widest block">
+                <span className="text-[8px] md:text-[10px] font-orbitron font-bold text-gray-500 uppercase tracking-[0.2px] block">
                   {stat.label}
                 </span>
-                <span className="text-xl md:text-xl font-orbitron font-black text-white block leading-none">
+                <span className="text-[15px] md:text-xl font-orbitron font-black text-white block leading-none">
                   {stat.val}
                 </span>
               </div>
-              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-105 transition-transform`}>
+              <div className={`w-8 h-8 md:w-12 md:h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-105 transition-transform`}>
                 <i className={`fa-solid ${stat.icon} ${stat.color} text-base md:text-lg`}></i>
               </div>
             </div>
           ))}
+          </div>
         </div>
 
         {/* ─── Main Content Tabs ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
+        <p className='font-orbitron p-2 font-bold text-[12px] rounded uppercase tracking-wider  md:hidden transition-colors'
+        style={{
+                  background:'linear-gradient(180deg, rgba(0, 213, 255, 0.2) 0%, rgba(0, 234, 255, 0.27) 100%)'
+                    
+                }}
+        >
+           Select Menu & Settings <i className="fa-solid fa-chevron-right"></i>
+        </p>
           {/* Tab buttons / selector sidebar */}
-          <div className="lg:col-span-3 space-y-2">
+          <div className="grid grid-cols-2 md:grid-cols-1 lg:col-span-3 gap-2 md:gap-0 space-y-0 md:space-y-2">
             {[
               { id: 'wallet', label: 'Wallet', desc: 'Balance & membership', icon: 'fa-wallet' },
-              { id: 'deployments', label: 'Deployments', desc: 'Registered scrims', icon: 'fa-shield-halved' },
-              { id: 'credentials', label: 'Credentials', desc: 'Update profile sheet', icon: 'fa-sliders' },
+              { id: 'deployments', label: 'Deployments', desc: 'Registered Tournament', icon: 'fa-shield-halved' },
+              { id: 'settings', label: 'Settings', desc: 'Update profile sheet', icon: 'fa-sliders' },
               { id: 'achievements', label: 'Achievements', desc: 'Acquired rank titles', icon: 'fa-medal' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => { setActiveTab(tab.id); setSuccessMsg(''); setErrorMsg(''); }}
-                className="w-full text-left p-4 rounded-xl border transition-all duration-300 flex items-center gap-4 group cursor-pointer"
+                className="w-full text-left p-3 rounded-xl border transition-all duration-300 flex items-center gap-2 md:gap-4 group cursor-pointer"
                 style={{
                   background: activeTab === tab.id
-                    ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(0, 212, 255, 0.02) 100%)'
-                    : 'rgba(255, 255, 255, 0.02)',
+                    ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(0, 213, 255, 0.36) 100%)'
+                    : 'rgba(255, 255, 255, 0.08)',
                   borderColor: activeTab === tab.id ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
                   boxShadow: activeTab === tab.id ? '0 0 20px rgba(0, 212, 255, 0.05)' : 'none',
                 }}
               >
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${activeTab === tab.id
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-all ${activeTab === tab.id
                     ? 'bg-primary/20 border border-primary/30 text-primary shadow-[0_0_10px_rgba(0,212,255,0.2)]'
-                    : 'bg-white/5 border border-white/10 text-gray-500 group-hover:text-gray-300'
+                    : 'bg-white/5 border border-white/10 text-gray-400 group-hover:text-gray-300'
                     }`}
                 >
-                  <i className={`fa-solid ${tab.icon} text-sm`}></i>
+                  <i className={`fa-solid ${tab.icon} text-[14px] md:text-sm`}></i>
                 </div>
                 <div className="flex-1">
-                  <span className={`font-orbitron font-bold text-xs uppercase tracking-wider block transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-gray-300 group-hover:text-white'
+                  <span className={`font-orbitron font-bold text-[10px] md:text-xs uppercase tracking-wider block transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-gray-300 group-hover:text-white'
                     }`}>
                     {tab.label}
                   </span>
-                  <span className="text-[9px] font-rajdhani text-gray-500 uppercase tracking-widest block mt-0.5">
+                  <span className="text-[9px] font-rajdhani text-gray-400 uppercase tracking-widest block mt-0.5">
                     {tab.desc}
                   </span>
                 </div>
@@ -328,7 +335,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
           </div>
 
           {/* Tab content panel */}
-          <div className="lg:col-span-9 glass p-6 md:p-10 rounded-2xl border border-white/5 min-h-[400px]">
+          <div className="lg:col-span-9 glass p-2 md:p-6 rounded-2xl border border-white/5 min-h-[400px]">
 
             {/* ─── TAB 0: Wallet / Balance ─── */}
             {activeTab === 'wallet' && (
@@ -412,12 +419,12 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
               </div>
             )}
 
-            {/* ─── TAB 2: Warrior Credentials Form ─── */}
-            {activeTab === 'credentials' && (
-              <div className="space-y-6">
+            {/* ─── TAB 2: Warrior Settings Form ─── */}
+            {activeTab === 'settings' && (
+              <div className="space-y-6 p-2 md:p-6">
                 <div className="border-b border-white/5 pb-4">
                   <h3 className="font-orbitron font-bold text-xl text-white uppercase tracking-tight">
-                    WARRIOR SHEET CREDENTIALS
+                    WARRIOR SHEET SETTINGS
                   </h3>
                   <p className="text-gray-500 font-rajdhani text-xs uppercase tracking-widest mt-1">
                     Manage your competitive metadata and contact channels

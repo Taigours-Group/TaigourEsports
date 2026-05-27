@@ -9,8 +9,10 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [playerBalance, setPlayerBalance] = useState(null);
+  const [showBalanceTooltip, setShowBalanceTooltip] = useState(false);
   const location = useLocation();
   const userMenuRef = useRef(null);
+  const balanceTooltipRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -44,6 +46,9 @@ const Header = () => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setShowUserMenu(false);
+      }
+      if (balanceTooltipRef.current && !balanceTooltipRef.current.contains(e.target)) {
+        setShowBalanceTooltip(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -192,7 +197,7 @@ const Header = () => {
                   <div className="flex items-center gap-1">
                     <i className="fa-solid fa-wallet text-primary text-xs"></i>
                     <span className="font-orbitron font-bold text-[10px] text-primary uppercase tracking-wider">
-                      रु {playerBalance?.balance?.toLocaleString() || '0'}
+                      ◈ {playerBalance?.balance?.toLocaleString() || '0'}
                     </span>
                   </div>
                   <div className="relative">
@@ -231,7 +236,7 @@ const Header = () => {
                       <p className="font-orbitron font-bold text-xs text-white truncate">{getUserDisplayName()}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <i className="fa-solid fa-wallet text-primary text-[9px]"></i>
-                        <p className="text-[10px] text-primary font-bold">रु {playerBalance?.balance?.toLocaleString() || '0'}</p>
+                        <p className="text-[10px] text-primary font-bold">◈ {playerBalance?.balance?.toLocaleString() || '0'}</p>
                       </div>
                       <p className="text-[10px] text-gray-500 truncate mt-0.5">{user.email}</p>
                     </div>
@@ -307,24 +312,67 @@ const Header = () => {
             {loading ? (
               <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin"></div>
             ) : user ? (
-              <Link to="/profile" className="relative group block">
-                {getUserAvatar() ? (
-                  <img
-                    src={getUserAvatar()}
-                    alt="avatar"
-                    className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/30"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-orbitron font-black text-[10px] text-primary ring-2 ring-primary/30"
-                    style={{ background: 'rgba(0,212,255,0.1)' }}
+              <div className="flex items-center gap-2">
+                {/* Balance display */}
+                <div className="flex items-center gap-1 pl-2 pr-1.5 py-1 rounded-full relative"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                  }}
+                  ref={balanceTooltipRef}
+                >
+                  <i className="fa-solid fa-wallet text-primary text-[12px]"></i>
+                  <span className="font-orbitron font-bold text-[12px] text-white uppercase tracking-wider">
+                    ◈ {playerBalance?.balance?.toLocaleString() || '0'}
+                  </span>
+                  <button
+                    onClick={() => setShowBalanceTooltip(!showBalanceTooltip)}
+                    className="cursor-pointer ml-1 hover:opacity-80 transition-opacity"
                   >
-                    {getUserDisplayName().charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-tertiary rounded-full border-2 border-bg-dark animate-pulse"
-                  style={{ boxShadow: '0 0 6px #00ff80' }}
-                ></span>
-              </Link>
+                    <i className="fa-solid fa-info text-primary text-[10px]"></i>
+                  </button>
+                  {/* Tooltip */}
+                  {showBalanceTooltip && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-bg-dark text-white text-xs rounded py-2 px-3 whitespace-nowrap z-50 animate-fade-in"
+                      style={{
+                        border: '1px solid rgba(0,212,255,0.3)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4), 0 0 12px rgba(0,212,255,0.2)',
+                      }}
+                    >
+                      <p className="text-[8px] text-white mb-1">
+                      Current balance in your account.  You can use this to enter <br/> tournaments and buy items from the store.
+                      </p>
+                      {/* Arrow */}
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-bg-dark rotate-45"
+                        style={{
+                          border: '1px solid rgba(0,212,255,0.3)',
+                          borderRight: 'none',
+                          borderBottom: 'none',
+                        }}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+                {/* Avatar */}
+                <Link to="/profile" className="relative group block">
+                  {getUserAvatar() ? (
+                    <img
+                      src={getUserAvatar()}
+                      alt="avatar"
+                      className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/30"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center font-orbitron font-black text-[10px] text-primary ring-2 ring-primary/30"
+                      style={{ background: 'rgba(0,212,255,0.1)' }}
+                    >
+                      {getUserDisplayName().charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-tertiary rounded-full border-2 border-bg-dark animate-pulse"
+                    style={{ boxShadow: '0 0 6px #00ff80' }}
+                  ></span>
+                </Link>
+              </div>
             ) : (
               <button
                 onClick={loginWithGoogle}

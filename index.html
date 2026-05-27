@@ -15,13 +15,13 @@
         theme: {
           extend: {
             colors: {
-              primary: '#00d4ff',
+              primary: '#83e8fc',
               accent: '#ffcc00',
               secondary: '#8000ff',
               tertiary: '#00ff80',
               pink: '#ff0080',
               'bg-dark': '#070709',
-              'bg-card': '#0f0f13',
+              'bg-card': '#83e8fc0d',
               'dark': '#000000'
             },
             fontFamily: {
@@ -53,71 +53,6 @@
         }
       }
     </script>
-    <style>
-      body {
-        background-color: #070709;
-        color: white;
-        font-family: 'Rajdhani', sans-serif;
-        scroll-behavior: smooth;
-        overflow-x: hidden;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .glass {
-        background: rgba(15, 15, 19, 0.7);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-
-      .bottom-nav-glass {
-        background: rgba(15, 15, 19, 0.7);
-        backdrop-filter: blur(20px);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .neon-border {
-        position: relative;
-        border: 1px solid rgba(0, 212, 255, 0.1);
-      }
-      .neon-border:hover {
-        border-color: rgba(0, 212, 255, 0.4);
-        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
-      }
-      .cyber-button {
-        clip-path: polygon(12% 0, 100% 0, 100% 75%, 88% 100%, 0 100%, 0 25%);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .cyber-button:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.2);
-      }
-      .text-glow {
-        text-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #00d4ff;
-        border-radius: 10px;
-      }
-      @media (max-width: 768px) {
-        .mobile-safe-bottom {
-          padding-bottom: env(safe-area-inset-bottom, 20px);
-        }
-      }
-
-      /* Desktop Navbar Animations */
-      @keyframes navPulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(0.7); }
-      }
-    </style>
 <script type="importmap">
 {
   "imports": {

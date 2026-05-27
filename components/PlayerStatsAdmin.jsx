@@ -231,13 +231,13 @@ const PlayerStatsAdmin = ({ registrations }) => {
         <div className="bg-bg-card p-4 rounded-lg border border-white/5">
           <div className="text-gray-500 text-xs uppercase tracking-widest mb-2">Total Balance</div>
           <div className="text-3xl font-orbitron font-black text-primary">
-            रु {playerStats.reduce((acc, p) => acc + p.balance, 0).toLocaleString()}
+            ◈ {playerStats.reduce((acc, p) => acc + p.balance, 0).toLocaleString()}
           </div>
         </div>
         <div className="bg-bg-card p-4 rounded-lg border border-white/5">
           <div className="text-gray-500 text-xs uppercase tracking-widest mb-2">Total Spent</div>
           <div className="text-3xl font-orbitron font-black text-pink">
-            रु {playerStats.reduce((acc, p) => acc + p.total_spent, 0).toLocaleString()}
+            ◈ {playerStats.reduce((acc, p) => acc + p.total_spent, 0).toLocaleString()}
           </div>
         </div>
       </div>
@@ -297,10 +297,10 @@ const PlayerStatsAdmin = ({ registrations }) => {
                       </span>
                     </td>
                     <td className="px-4 py-4 font-orbitron font-black text-primary">
-                      रु {player.balance.toLocaleString()}
+                      ◈ {player.balance.toLocaleString()}
                     </td>
                     <td className="px-4 py-4 font-orbitron font-bold text-pink">
-                      रु {player.total_spent.toLocaleString()}
+                      ◈ {player.total_spent.toLocaleString()}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button
@@ -356,7 +356,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
                 <h4 className="text-primary font-orbitron font-bold border-b border-white/10 pb-2 mb-4">Financial & Status</h4>
                 {/* Balance */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-400 mb-2">Balance (रु)</label>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Balance (◈)</label>
                   <input
                     type="number"
                     value={tempBalance}
