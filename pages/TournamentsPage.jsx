@@ -86,7 +86,7 @@ export const CountdownTimer = ({ targetDate }) => {
 };
 
 export const FeeTooltip = () => (
-  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-40 md:w-52 p-3 md:p-4 bg-bg-card/95 border border-primary/30 rounded-2xl text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-[0_15px_30px_rgba(0,0,0,0.5)] backdrop-blur-2xl scale-95 group-hover:scale-100 origin-bottom">
+  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-40 md:w-52 p-3 md:p-4 bg-bg-card/20 border border-primary/30 rounded-2xl text-[8px] md:text-[10px] text-gray-100 font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-[0_15px_30px_rgba(0,0,0,0.5)] backdrop-blur-2xl scale-95 group-hover:scale-100 origin-bottom">
     <div className="text-primary mb-2 md:mb-3 flex items-center gap-2 font-orbitron">
       <i className="fas fa-shield-halved text-xs"></i>
       PROTOCOL

@@ -82,15 +82,15 @@ const HomePage = ({ tournaments, leaderboard, registrations }) => {
       </section>
 
       {/* Grid Stats */}
-      <section className="py-12 md:py-16 bg-bg-card/30 border-y border-white/5">
+      <section className="py-12 md:py-16 bg-bg-card/5 border-y border-white/5">
         <div className="container mx-auto px-3 md:px-6 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
           {[
             { label: 'Total Warriors', val: '1,500+', icon: 'fa-users', color: 'text-primary' },
             { label: 'Tournaments', val: '48+', icon: 'fa-crosshairs', color: 'text-pink' },
-            { label: 'Prize Awarded', val: '◈ 50K+', icon: 'fa-trophy', color: 'text-accent' },
+            { label: 'Prize Awarded', val: ' 50K+', icon: 'fa-trophy', color: 'text-accent' },
             { label: 'Lobbies Live', val: '12', icon: 'fa-broadcast-tower', color: 'text-tertiary' }
           ].map((stat, i) => (
-            <div key={i} className="text-center group p-2 md:p-4">
+            <div key={i} className="flex flex-col text-center border rounded border-primary/10 group p-2 md:p-4">
               <i className={`fa-solid ${stat.icon} ${stat.color} text-lg md:text-2xl mb-2 md:mb-3 block group-hover:scale-125 transition-transform`}></i>
               <div className="text-xl md:text-3xl lg:text-4xl font-orbitron font-black text-white">{stat.val}</div>
               <div className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">{stat.label}</div>
