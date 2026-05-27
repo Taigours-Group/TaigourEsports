@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Taigours2026';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
-export default function AdminGate({ children }) {
+export default function AdminGate({ children }) { 
   const [input, setInput] = useState('');
   
   // Logic to verify if session is still valid

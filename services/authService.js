@@ -103,7 +103,7 @@ class AuthService {
 
     // Initialize player stats if not provided
     if (profileData.rank === undefined) {
-      profileData.rank = 'UNRANKED';
+      profileData.rank = 'UNRANKED'; 
     }
     if (profileData.combat_score === undefined) {
       profileData.combat_score = 0;

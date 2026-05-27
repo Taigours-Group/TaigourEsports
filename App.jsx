@@ -26,7 +26,7 @@ const App = () => {
   const [tournaments, setTournaments] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [streams, setStreams] = useState([]);
-  const [registrations, setRegistrations] = useState([]);
+  const [registrations, setRegistrations] = useState([]); 
   const [logs, setLogs] = useState([]);
 
   // Single shared data-fetch function — no duplication

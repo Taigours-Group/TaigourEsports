@@ -17,7 +17,7 @@ const StreamsPage = ({ streams }) => {
   
   const chatContainerRef = useRef(null);
   const MY_USERNAME = 'Guest_Pro';
-
+ 
   // Check admin status
   useEffect(() => {
     const loginTime = localStorage.getItem('admin_login_time');

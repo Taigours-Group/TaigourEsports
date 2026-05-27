@@ -324,7 +324,7 @@ const Header = () => {
                   <i className="fa-solid fa-wallet text-primary text-[12px]"></i>
                   <span className="font-orbitron font-bold text-[12px] text-white uppercase tracking-wider">
                     ◈ {playerBalance?.balance?.toLocaleString() || '0'}
-                  </span>
+                  </span> 
                   <button
                     onClick={() => setShowBalanceTooltip(!showBalanceTooltip)}
                     className="cursor-pointer ml-1 hover:opacity-80 transition-opacity"

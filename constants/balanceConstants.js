@@ -35,7 +35,7 @@ export const MEMBERSHIP_BENEFITS = {
   },
   [MEMBERSHIP_TIERS.PLATINUM]: {
     name: 'Platinum Member',
-    price: 999,
+    price: 999, 
     color: 'cyan',
     benefits: ['Unlimited tournaments', '25% prize boost', '24/7 VIP support', 'All exclusive events', 'Monthly rewards + bonus']
   }

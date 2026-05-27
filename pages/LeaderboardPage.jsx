@@ -19,7 +19,7 @@ const LeaderboardPage = ({ leaderboard }) => {
         return rankA - rankB;
       });
     }
-    return base;
+    return base; 
   }, [leaderboard, activeTab, sortBy]);
 
   const topThree = filtered.slice(0, 3);

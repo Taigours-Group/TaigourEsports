@@ -16,7 +16,7 @@ class BalanceService {
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching balance:', error);
         return { error };
-      }
+      } 
 
       return { 
         data: data || {

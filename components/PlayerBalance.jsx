@@ -306,7 +306,7 @@ const PlayerBalance = () => {
             <div className="bg-bg-card border border-white/10 rounded-lg p-4">
               <div className="text-gray-500 text-xs uppercase tracking-widest mb-2">Member Since</div>
               <div className="text-sm text-white font-bold">
-                {new Date(playerBalance?.created_at).toLocaleDateString()}
+                {new Date(playerBalance?.created_at).toLocaleDateString()} 
               </div>
             </div>
             <div className="bg-bg-card border border-white/10 rounded-lg p-4">

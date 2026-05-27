@@ -413,7 +413,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                           </div>
                         </div>
                       );
-                    })}
+                    })} 
                   </div>
                 )}
               </div>

@@ -413,7 +413,7 @@ app.post('/api/login', (req, res) => {
     return res.json({
       success: true,
       token: 'admin-token-' + Date.now(),
-      user: { name: 'Admin', role: 'admin' }
+      user: { name: 'Admin', role: 'admin' } 
     });
   }
   res.status(401).json({ success: false, message: 'Invalid credentials' });

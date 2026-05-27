@@ -61,7 +61,7 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
 
   // Auto-fill form with logged-in user data
   useEffect(() => {
-    if (showRegModal && user && profile) {
+    if (showRegModal && user && profile) { 
       setRegForm(prev => ({
         ...prev,
         playername: profile.full_name || '',

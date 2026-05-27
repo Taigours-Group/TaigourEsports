@@ -11,7 +11,7 @@ const Preloader = () => {
     'Initializing Core Systems...',
     'Ready to Game.',
     'Creating the Battle Ground...',
-    'The Best is Yet to Come...',
+    'The Best is Yet to Come...', 
     'Team is Everything...',
     'Respect...Honor...Loyalty...',
     'Taigra Nexus Labs Pvt. Ltd.',

@@ -21,7 +21,7 @@ export const MOCK_MESSAGES = [
   'That snipe tho 👀', 
   'GG WP 💯', 
   'Amazing gameplay!', 
-  'Let\'s go! 🔥', 
+  'Let\'s go! 🔥',  
   'Who saw that glitch?', 
   'Next match when?'
 ];

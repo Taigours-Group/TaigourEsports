@@ -434,10 +434,10 @@ const AdminPanel = ({
 
           <div className="w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
             {[
-              { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' },
+              { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' }, 
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
               { id: 'leaderboard', label: 'Ranks', icon: 'fa-crown' },
-              { id: 'streams', label: 'Feeds', icon: 'fa-bolt' },
+              { id: 'streams', label: 'Feeds', icon: 'fa-bolt' }, 
               { id: 'registrations', label: 'Personnel', icon: 'fa-users' },
               { id: 'Player Stats', label: 'Player Stats', icon: 'fa-chart-line' },
               { id: 'requests', label: 'Requests', icon: 'fa-inbox' },

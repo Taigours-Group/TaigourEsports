@@ -17,7 +17,7 @@ const parseDateAtEndOfDay = (dateValue) => {
   if (Number.isNaN(parsed.getTime())) return null;
   parsed.setHours(23, 59, 59, 999);
   return parsed;
-};
+}; 
 
 const formatDateLabel = (dateValue) => {
   if (!dateValue) return 'TBA';

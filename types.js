@@ -18,7 +18,7 @@ export const GameType = {
  * @property {string} prize
  * @property {string} [registration_start_date]
  * @property {string} [registration_end_date]
- * @property {string} registration_url
+ * @property {string} registration_url 
  * @property {string} [stream_id]
  * @property {string} [description]
  * @property {string[]} [rules]
@@ -93,7 +93,7 @@ export const Registration = {};
 /**
  * @typedef {Object} LogEntry
  * @property {number} id
- * @property {string} timestamp
+ * @property {string} timestamp 
  * @property {string} method
  * @property {string} endpoint
  * @property {number} status

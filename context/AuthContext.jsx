@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
+      if (session?.user) { 
         fetchProfile(session.user.id);
       } else {
         setLoading(false);

@@ -91,7 +91,7 @@ const OnboardingModal = () => {
         {/* Glow Accent */}
         <div className="absolute -top-12 -left-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
-
+ 
         {/* Header Icon */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/30 relative">

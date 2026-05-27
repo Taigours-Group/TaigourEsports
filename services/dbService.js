@@ -14,7 +14,7 @@ class DBService {
       console.error('Error fetching tournaments:', error);
       return [];
     }
-  }
+  } 
 
   async saveTournaments(data) {
     try {

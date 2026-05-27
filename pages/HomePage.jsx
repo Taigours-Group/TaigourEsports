@@ -18,7 +18,7 @@ const parseDateAtEndOfDay = (dateValue) => {
   parsed.setHours(23, 59, 59, 999);
   return parsed;
 };
-
+ 
 const getRegistrationStatus = (tournament) => {
   const now = new Date();
   const regStart = parseDateAtStartOfDay(tournament.registration_start_date);

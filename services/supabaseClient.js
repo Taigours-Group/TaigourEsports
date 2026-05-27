@@ -9,3 +9,4 @@ if (!supabaseUrl || !supabaseKey) {
 
 // Single shared Supabase client instance for the entire app
 export const supabase = createClient(supabaseUrl, supabaseKey);
+ 

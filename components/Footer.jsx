@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const Footer = () => (
   <footer className="bg-black border-t border-primary/10 pt-8 md:pt-16 pb-6 md:pb-8">
-    <div className="container mx-auto px-3 md:px-4">
+    <div className="container mx-auto px-3 md:px-4"> 
       {/* Main Footer Content */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8 lg:gap-12 mb-8 md:mb-12">
         {/* Brand Section */}

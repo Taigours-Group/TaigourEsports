@@ -10,7 +10,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
   const [tempBalance, setTempBalance] = useState('');
   const [tempMembership, setTempMembership] = useState('none');
   const [tempDuration, setTempDuration] = useState('30');
-  
+   
   // New profile edit fields
   const [tempProfile, setTempProfile] = useState({
     full_name: '',
