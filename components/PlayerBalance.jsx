@@ -220,7 +220,7 @@ const PlayerBalance = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-gray-400 text-[12px] md:text-sm uppercase md:tracking-widest tracking-[0.4px]">Available Balance</h3>
-            <div className="text-2xl md:text-4xl font-orbitron font-black text-primary">
+            <div className="text-xl md:text-4xl font-orbitron font-black text-primary">
               ◈ {playerBalance?.balance?.toLocaleString() || '0'} TGC
             </div>
             {Number(playerBalance?.locked_balance || 0) > 0 && (
@@ -270,7 +270,7 @@ const PlayerBalance = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10">
+      <div className="flex border-b border-white/10 overflow-x-auto">
         <button
           onClick={() => setActiveTab('balance')}
           className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
