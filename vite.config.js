@@ -11,17 +11,11 @@ export default defineConfig(({ mode }) => {
         allowedHosts: 'https://taigours-e-sports.onrender.com',
         proxy: {
           '/api': {
-            target: 'http://localhost:10000',
+            target: 'http://localhost:10000 ' || 'https://taigours-e-sports.onrender.com',
             changeOrigin: true,
             secure: false,
-          },
-        },
-      },
-      plugins: [react()],
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
+          }
         }
-      } 
-    };
-});
+      }
+    }
+  })

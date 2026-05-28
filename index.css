@@ -44,7 +44,8 @@ body {
         scrollbar-width: none;
       }
       .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
+        margin-top: 10px;
+        height: 5px;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
         background: #00d4ff;

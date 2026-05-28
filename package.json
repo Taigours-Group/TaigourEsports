@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@capawesome/capacitor-google-sign-in": "^0.1.2",
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/supabase-js": "^2.106.2",
     "body-parser": "^2.2.2",
     "concurrently": "^9.2.1",
@@ -19,7 +20,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6", 
+    "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1"
   },
   "devDependencies": {

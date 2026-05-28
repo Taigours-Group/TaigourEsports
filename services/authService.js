@@ -117,20 +117,30 @@ class AuthService {
       .upsert([{ id: userId, ...profileData }]);
 
     if (!error) {
-      // Initialize player balance
+      // Initialize wallet (wallet_id === player_id)
       try {
-        await supabase
-          .from('player_balances')
-          .upsert([{
-            user_id: userId,
-            balance: 0,
-            membership_tier: 'none',
-            membership_expires_at: null,
-            total_spent: 0,
-            created_at: new Date().toISOString()
-          }]);
-      } catch (balanceError) {
-        console.error('Error initializing balance:', balanceError);
+        if (profileData.player_id) {
+          await supabase
+            .from('wallets')
+            .upsert([{
+              wallet_id: profileData.player_id,
+              user_id: userId,
+              available_balance: 0,
+              locked_balance: 0,
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }], { onConflict: 'wallet_id' });
+        }
+      } catch (walletError) {
+        console.error('Error initializing wallet:', walletError);
+      }
+
+      // Initialize membership metadata
+      try {
+        await supabase.rpc('ensure_membership', { p_user_id: userId });
+      } catch (membershipError) {
+        console.error('Error initializing membership:', membershipError);
       }
     }
 

@@ -62,7 +62,7 @@ const Preloader = () => {
           <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border border-primary/10 border-t-primary border-r-primary/40 animate-spin transition-all duration-1000 ease-in-out"></div>
           <div className="absolute inset-2 rounded-full border border-pink/5 border-b-pink/40 animate-spin [animation-direction:reverse] [animation-duration:3s]"></div>
           
-          {/* Tiger Logo with Glitch Effect */}
+          {/* Taigour E-Sports Logo with Glitch Effect */}
           <div className="absolute inset-0 m-auto w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
             <img 
               src="https://res.cloudinary.com/dbjjzyrr3/image/upload/v1768567786/tiger-logo_jcf2zj.png" 

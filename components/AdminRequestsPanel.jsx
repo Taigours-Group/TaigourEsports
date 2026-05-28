@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { REQUEST_TYPES, REQUEST_STATUS, MEMBERSHIP_BENEFITS, ADMIN_WHATSAPP } from '../constants/balanceConstants';
 
+const BRAND = {
+  name: 'Taigours E-Sports',
+  logoUrl: 'https://res.cloudinary.com/dbjjzyrr3/image/upload/v1768567786/tiger-logo_jcf2zj.png'
+};
+
 const AdminRequestsPanel = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8,12 +13,14 @@ const AdminRequestsPanel = () => {
   const [expandedRequest, setExpandedRequest] = useState(null); 
   const [processingId, setProcessingId] = useState(null);
   const [adminNotes, setAdminNotes] = useState('');
+  const [billRequest, setBillRequest] = useState(null);
 
   useEffect(() => {
+    setLoading(true);
     fetchRequests();
     const interval = setInterval(fetchRequests, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [filter]);
 
   const fetchRequests = async () => {
     try {
@@ -40,6 +47,8 @@ const AdminRequestsPanel = () => {
       if (!response.ok) throw new Error('Failed to approve request');
 
       alert('✓ Request approved and balance/membership updated!');
+      const approvedReq = requests.find(r => r.id === requestId);
+      if (approvedReq) setBillRequest({ ...approvedReq, status: REQUEST_STATUS.APPROVED, admin_notes: adminNotes || approvedReq.admin_notes || null });
       setAdminNotes('');
       setExpandedRequest(null);
       await fetchRequests();
@@ -92,6 +101,136 @@ const AdminRequestsPanel = () => {
   const getTypeLabel = (type) => {
     return type === REQUEST_TYPES.RECHARGE ? '💰 Recharge' : '👑 Membership';
   };
+
+  const openBillPrint = (request) => {
+    if (!request) return;
+    const createdAt = request.created_at ? new Date(request.created_at) : new Date();
+    const billNo = `REQ-${request.id}`;
+
+    const lines = [];
+    if (request.type === REQUEST_TYPES.RECHARGE) {
+      lines.push({ label: 'Package amount', value: `◈ ${request.package_amount || 0}` });
+      lines.push({ label: 'Bonus', value: `◈ ${request.bonus_amount || 0}` });
+      lines.push({ label: 'Total credited', value: `◈ ${request.amount || 0}` });
+      if (request.cost) lines.push({ label: 'Paid (NPR)', value: `रु ${request.cost}` });
+    } else {
+      const tierName = MEMBERSHIP_BENEFITS[request.tier]?.name || request.tier || 'Membership';
+      lines.push({ label: 'Plan', value: tierName });
+      lines.push({ label: 'Duration', value: `${request.duration_days || 30} days` });
+      lines.push({ label: 'Amount', value: `◈ ${request.amount || 0}` });
+    }
+
+    const rowsHtml = lines.map(l => `
+      <tr>
+        <td>${l.label}</td>
+        <td style="text-align:right;font-weight:700">${l.value}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${BRAND.name} • Bill ${billNo}</title>
+    <!-- Loads html2pdf rendering engine -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #0b0b0b; background-color: #f9f9f9; }
+      .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 24px; max-width: 720px; margin: 0 auto; background: #ffffff; }
+      .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .brand img { width: 44px; height: 44px; object-fit: contain; }
+      h1 { margin: 0; font-size: 18px; }
+      .muted { color: #666; font-size: 12px; }
+      hr { border: 0; border-top: 1px solid #eee; margin: 14px 0; }
+      table { width: 100%; border-collapse: collapse; }
+      td { padding: 8px 0; font-size: 13px; border-bottom: 1px dashed #eee; }
+      .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .meta div { font-size: 12px; color: #333; }
+      .meta b { color: #000; }
+      .footer { margin-top: 14px; font-size: 11px; color: #666; }
+    </style>
+  </head>
+  <body>
+    <div id="bill-pdf-root" class="card">
+      <div class="top">
+        <div class="brand">
+          <!-- crossorigin added to prevent canvas security block issues with your logo -->
+          <img src="${BRAND.logoUrl}" alt="${BRAND.name}" crossorigin="anonymous" />
+          <div>
+            <h1>${BRAND.name} • Payment Bill</h1>
+            <div class="muted">Bill No: <b>${billNo}</b></div>
+          </div>
+        </div>
+        <div class="muted" style="text-align:right">
+          Date<br/>
+          <b>${createdAt.toLocaleString()}</b>
+        </div>
+      </div>
+
+      <hr/>
+
+      <div class="meta">
+        <div>Customer: <b>${request.user_name || 'Player'}</b></div>
+        <div>Email: <b>${request.user_email || '-'}</b></div>
+        <div>User ID: <b>${request.players_id || '-'}</b></div>
+        <div>Type: <b>${(request.type || '').toString().toUpperCase()}</b></div>
+        <div>WhatsApp: <b>${request.whatsapp_number || '-'}</b></div>
+        <div>Pay method: <b>${(request.payment_method || '-').toString().toUpperCase()}</b></div>
+        <div>Acc no: <b>${request.payment_account_number || '-'}</b></div>
+        <div>Acc owner: <b>${request.payment_account_owner || '-'}</b></div>
+      </div>
+
+      <hr/>
+
+      <table>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      ${request.description ? `<div class="footer"><b>Note:</b> ${request.description}</div>` : ''}
+      ${request.admin_notes ? `<div class="footer"><b>Admin notes:</b> ${request.admin_notes}</div>` : ''}
+      <div class="footer">Generated by ${BRAND.name} Admin Panel.</div>
+    </div>
+
+    <script>
+      window.onload = () => {
+        // Targets your specific bill layout wrapper
+        const element = document.getElementById('bill-pdf-root');
+        
+        const options = {
+          margin:       10,
+          filename:     'Bill-${billNo}.pdf',
+          image:        { type: 'jpeg', quality: 1.0 },
+          html2canvas:  { 
+            scale: 2.5,          // Upscales layout container density for vector crispness
+            useCORS: true,        // Allows external secure URLs to load properly
+            letterRendering: true // Forces separate character tracking for crisp text selection
+          },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Generates the selectable digital PDF and prompts download directly
+        html2pdf().from(element).set(options).save().then(() => {
+          // Closes the blank helper tab immediately after downloading completes
+          setTimeout(() => { window.close(); }, 500);
+        });
+      };
+    </script>
+  </body>
+</html>
+    `.trim();
+
+    const w = window.open('', '_blank');
+    if (!w) return alert('Popup blocked. Please allow popups to print the bill.');
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
 
   // Calculate stats
   const pendingCount = requests.filter(r => r.status === REQUEST_STATUS.PENDING).length;
@@ -203,7 +342,7 @@ const AdminRequestsPanel = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <div className="text-gray-500 uppercase tracking-widest text-xs mb-1">Player ID</div>
-                      <div className="font-mono text-white">{request.user_id}</div>
+                      <div className="font-mono text-white">{request.players_id}</div>
                     </div>
                     <div>
                       <div className="text-gray-500 uppercase tracking-widest text-xs mb-1">Request ID</div>
@@ -244,6 +383,29 @@ const AdminRequestsPanel = () => {
                         </div>
                       </>
                     )}
+                  </div>
+
+                  {/* Payment Details */}
+                  <div className="bg-white/5 border border-white/10 rounded p-3 space-y-2">
+                    <div className="text-gray-500 uppercase tracking-widest text-xs mb-1">Payment Details</div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-gray-500 text-xs uppercase tracking-widest mb-1">WhatsApp</div>
+                        <div className="font-mono text-white break-all">{request.whatsapp_number || '-'}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 text-xs uppercase tracking-widest mb-1">Method</div>
+                        <div className="font-bold text-white">{(request.payment_method || '-').toString().toUpperCase()}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 text-xs uppercase tracking-widest mb-1">Account No.</div>
+                        <div className="font-mono text-white break-all">{request.payment_account_number || '-'}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 text-xs uppercase tracking-widest mb-1">Owner</div>
+                        <div className="font-bold text-white break-words">{request.payment_account_owner || '-'}</div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Description */}
@@ -303,6 +465,14 @@ const AdminRequestsPanel = () => {
                         </button>
                       </div>
 
+                  {/* Print bill shortcut */}
+                  <button
+                    onClick={() => openBillPrint(request)}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 text-white rounded font-bold hover:bg-white/10 transition-all"
+                  >
+                    <i className="fa-solid fa-print mr-2"></i>Print Bill
+                  </button>
+
                       {/* WhatsApp Reminder */}
                       <div className="bg-green-400/10 border border-green-400/30 rounded p-2 text-xs text-green-300">
                         <i className="fa-brands fa-whatsapp mr-1"></i>
@@ -343,6 +513,37 @@ const AdminRequestsPanel = () => {
           </div>
         </div>
       </div>
+
+      {/* Auto bill prompt after approve */}
+      {billRequest && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[2000] p-4">
+          <div className="bg-bg-card border border-white/10 rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-white font-orbitron font-black">Print Bill</div>
+              <button onClick={() => setBillRequest(null)} className="text-gray-400 hover:text-white">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="text-sm text-gray-300">
+              Approved request <span className="font-mono text-primary">#{billRequest.id}</span> for <b>{billRequest.user_name || 'Player'}</b>.
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { openBillPrint(billRequest); setBillRequest(null); }}
+                className="flex-1 px-4 py-2 bg-primary text-dark rounded font-bold hover:bg-primary/80"
+              >
+                <i className="fa-solid fa-print mr-2"></i>Print Now
+              </button>
+              <button
+                onClick={() => setBillRequest(null)}
+                className="flex-1 px-4 py-2 bg-white/5 text-white rounded font-bold hover:bg-white/10"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

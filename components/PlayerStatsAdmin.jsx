@@ -8,6 +8,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [tempBalance, setTempBalance] = useState('');
+  const [tempDescription, setTempDescription] = useState('');
   const [tempMembership, setTempMembership] = useState('none');
   const [tempDuration, setTempDuration] = useState('30');
    
@@ -27,6 +28,9 @@ const PlayerStatsAdmin = ({ registrations }) => {
   const [sortBy, setSortBy] = useState('created_at');
   const [page, setPage] = useState(0);
   const [pageSize] = useState(10);
+  const [ledgerWalletId, setLedgerWalletId] = useState(null);
+  const [ledgerRows, setLedgerRows] = useState([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
 
   // Fetch player statistics
   useEffect(() => {
@@ -44,6 +48,23 @@ const PlayerStatsAdmin = ({ registrations }) => {
       console.error('Failed to fetch player stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openLedger = async (walletId) => {
+    if (!walletId) return;
+    setLedgerWalletId(walletId);
+    setLedgerLoading(true);
+    try {
+      const response = await fetch(`/api/admin/ledger/${encodeURIComponent(walletId)}?limit=50`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to fetch ledger');
+      setLedgerRows(result.data || []);
+    } catch (e) {
+      console.error(e);
+      alert(e.message || 'Failed to fetch ledger');
+    } finally {
+      setLedgerLoading(false);
     }
   };
 
@@ -119,7 +140,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
       // Update balance
       const newBalance = parseInt(tempBalance) || 0;
       if (newBalance !== editingPlayer.balance) {
-        await balanceService.adminUpdateBalance(editingPlayer.user_id, newBalance, 'Admin adjustment');
+        await balanceService.adminUpdateBalance(editingPlayer.user_id, newBalance, 'Admin adjustment: ' + tempDescription);
       }
 
       // Update membership
@@ -254,6 +275,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
                 <th className="px-4 py-3 text-left text-xs font-orbitron font-black uppercase text-gray-400 tracking-widest">Stats</th>
                 <th className="px-4 py-3 text-left text-xs font-orbitron font-black uppercase text-gray-400 tracking-widest">Membership</th>
                 <th className="px-4 py-3 text-left text-xs font-orbitron font-black uppercase text-gray-400 tracking-widest">Balance</th>
+                <th className="px-4 py-3 text-left text-xs font-orbitron font-black uppercase text-gray-400 tracking-widest">Locked</th>
                 <th className="px-4 py-3 text-left text-xs font-orbitron font-black uppercase text-gray-400 tracking-widest">Total Spent</th>
                 <th className="px-4 py-3 text-center text-xs font-orbitron font-black uppercase text-gray-400 tracking-widest">Actions</th>
               </tr>
@@ -273,7 +295,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
                 </tr>
               ) : (
                 filteredPlayers.map((player) => (
-                  <tr key={player.user_id} className="hover:bg-white/5 transition-colors">
+                  <tr key={player.user_id || player.profiles?.player_id} className="hover:bg-white/5 transition-colors">
                     <td className="px-4 py-4">
                       <div>
                         <div className="font-bold text-white">{player.profiles?.full_name || 'N/A'}</div>
@@ -299,16 +321,28 @@ const PlayerStatsAdmin = ({ registrations }) => {
                     <td className="px-4 py-4 font-orbitron font-black text-primary">
                       ◈ {player.balance.toLocaleString()}
                     </td>
+                    <td className="px-4 py-4 font-orbitron font-bold text-accent">
+                      ◈ {Number(player.locked_balance || 0).toLocaleString()}
+                    </td>
                     <td className="px-4 py-4 font-orbitron font-bold text-pink">
                       ◈ {player.total_spent.toLocaleString()}
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <button
-                        onClick={() => startEdit(player)}
-                        className="px-3 py-1 bg-primary text-dark rounded text-xs font-bold hover:bg-primary/80 transition-colors"
-                      >
-                        <i className="fa-solid fa-edit mr-1"></i>Edit
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openLedger(player.profiles?.player_id)}
+                          className="px-3 py-1 bg-white/5 border border-white/10 text-white rounded text-xs font-bold hover:bg-white/10 transition-colors"
+                          title="View ledger"
+                        >
+                          <i className="fa-solid fa-receipt mr-1"></i>Ledger
+                        </button>
+                        <button
+                          onClick={() => startEdit(player)}
+                          className="px-3 py-1 bg-primary text-dark rounded text-xs font-bold hover:bg-primary/80 transition-colors"
+                        >
+                          <i className="fa-solid fa-edit mr-1"></i>Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -363,7 +397,15 @@ const PlayerStatsAdmin = ({ registrations }) => {
                     onChange={(e) => setTempBalance(e.target.value)}
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary"
                   />
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Description</label>
+                  <input
+                    type="text"
+                    value={tempDescription}
+                    onChange={(e) => setTempDescription(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary"
+                  />
                 </div>
+
 
                 {/* Membership Tier */}
                 <div>
@@ -527,6 +569,53 @@ const PlayerStatsAdmin = ({ registrations }) => {
                   Save Changes
                 </button>
               </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ledger Modal */}
+      {ledgerWalletId && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-bg-card border border-white/10 rounded-2xl p-6 max-w-3xl w-full my-8">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <div className="text-gray-500 text-xs uppercase tracking-widest">Wallet Ledger</div>
+                <div className="text-white font-orbitron font-black">{ledgerWalletId}</div>
+              </div>
+              <button onClick={() => setLedgerWalletId(null)} className="text-gray-400 hover:text-white">
+                <i className="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+
+            {ledgerLoading ? (
+              <div className="text-gray-400"><i className="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</div>
+            ) : ledgerRows.length === 0 ? (
+              <div className="text-gray-500">No ledger entries.</div>
+            ) : (
+              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+                {ledgerRows.map((tx) => {
+                  const isOut = tx.from_wallet_id === ledgerWalletId && tx.to_wallet_id !== ledgerWalletId;
+                  return (
+                    <div key={tx.tx_id} className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-white font-bold text-sm truncate">{(tx.type || '').replaceAll('_', ' ')}</div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {tx.description || '—'} • {tx.created_at ? new Date(tx.created_at).toLocaleString() : ''}
+                        </div>
+                        {(tx.reference_id || tx.idempotency_key) && (
+                          <div className="text-[10px] text-gray-600 font-mono truncate">
+                            {tx.reference_id ? `ref:${tx.reference_id}` : ''}{tx.reference_id && tx.idempotency_key ? ' • ' : ''}{tx.idempotency_key ? `idem:${tx.idempotency_key}` : ''}
+                          </div>
+                        )}
+                      </div>
+                      <div className={`font-orbitron font-black ${isOut ? 'text-pink' : 'text-tertiary'}`}>
+                        {isOut ? '-' : '+'}◈ {Number(tx.amount || 0).toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

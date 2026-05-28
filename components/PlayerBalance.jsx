@@ -4,7 +4,7 @@ import { MEMBERSHIP_BENEFITS, MEMBERSHIP_TIERS, RECHARGE_PACKAGES, ADMIN_WHATSAP
 import { useAuth } from '../context/AuthContext';
 
 const PlayerBalance = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [playerBalance, setPlayerBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('balance');
@@ -12,6 +12,17 @@ const PlayerBalance = () => {
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedMembership, setSelectedMembership] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [transferForm, setTransferForm] = useState({ to_player_id: '', amount: '' });
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [requestInfo, setRequestInfo] = useState({
+    whatsapp_number: '',
+    payment_method: 'esewa',
+    payment_account_number: '',
+    payment_account_owner: '',
+    players_id: profile?.player_id || ''
+  });
 
   useEffect(() => {
     if (user) {
@@ -20,6 +31,13 @@ const PlayerBalance = () => {
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  useEffect(() => {
+    // Pre-fill WhatsApp from profile contact if available (best effort)
+    if (profile?.contact_info && !requestInfo.whatsapp_number) {
+      setRequestInfo(prev => ({ ...prev, whatsapp_number: profile.contact_info }));
+    }
+  }, [profile]);
 
   const fetchBalance = async () => {
     if (!user) return;
@@ -35,6 +53,23 @@ const PlayerBalance = () => {
     }
   };
 
+  const fetchHistory = async () => {
+    if (!user) return;
+    setHistoryLoading(true);
+    try {
+      const { data, error } = await balanceService.getTransactionHistory(user.id, 30);
+      if (!error) setHistory(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Failed to fetch history:', e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'history') fetchHistory();
+  }, [activeTab]);
+
   const handleRechargeClick = (pkg) => {
     setSelectedPackage(pkg);
     setShowRechargeModal(true);
@@ -42,6 +77,9 @@ const PlayerBalance = () => {
 
   const submitRechargeRequest = async () => {
     if (!selectedPackage || !user) return;
+    if (!requestInfo.whatsapp_number || !requestInfo.payment_account_number || !requestInfo.payment_account_owner || !requestInfo.players_id) {
+      return alert('Please enter WhatsApp number, payment account number, and owner name.');
+    }
     
     try {
       const response = await fetch('/api/purchase-request', {
@@ -57,7 +95,12 @@ const PlayerBalance = () => {
           package_amount: selectedPackage.amount,
           bonus_amount: selectedPackage.bonus,
           cost: selectedPackage.cost,
-          description: `Recharge request for ◈${selectedPackage.amount} + ◈${selectedPackage.bonus} bonus`
+          description: `Recharge request for ◈${selectedPackage.amount} + ◈${selectedPackage.bonus} bonus`,
+          whatsapp_number: requestInfo.whatsapp_number,
+          payment_method: requestInfo.payment_method,
+          payment_account_number: requestInfo.payment_account_number,
+          payment_account_owner: requestInfo.payment_account_owner,
+          players_id: requestInfo.players_id
         })
       });
 
@@ -74,6 +117,9 @@ const PlayerBalance = () => {
 
   const submitMembershipRequest = async () => {
     if (!selectedMembership || !user) return;
+    if (!requestInfo.whatsapp_number || !requestInfo.payment_account_number || !requestInfo.payment_account_owner || !requestInfo.players_id) {
+      return alert('Please enter WhatsApp number, payment account number, and owner name.');
+    }
 
     try {
       const response = await fetch('/api/purchase-request', {
@@ -87,7 +133,12 @@ const PlayerBalance = () => {
           tier: selectedMembership,
           amount: MEMBERSHIP_BENEFITS[selectedMembership].price,
           duration_days: 30,
-          description: `Membership request for ${MEMBERSHIP_BENEFITS[selectedMembership].name} (◈${MEMBERSHIP_BENEFITS[selectedMembership].price})`
+          description: `Membership request for ${MEMBERSHIP_BENEFITS[selectedMembership].name} (◈${MEMBERSHIP_BENEFITS[selectedMembership].price})`,
+          whatsapp_number: requestInfo.whatsapp_number,
+          payment_method: requestInfo.payment_method,
+          payment_account_number: requestInfo.payment_account_number,
+          payment_account_owner: requestInfo.payment_account_owner,
+          players_id: requestInfo.players_id
         })
       });
 
@@ -115,6 +166,44 @@ const PlayerBalance = () => {
     return date.toLocaleDateString();
   };
 
+  const submitTransfer = async () => {
+    if (!user) return;
+    const fromPlayerId = profile?.player_id;
+    const toPlayerId = (transferForm.to_player_id || '').trim();
+    const amt = Number(transferForm.amount);
+
+    if (!fromPlayerId) return alert('Your Player ID is missing. Please update your profile first.');
+    if (!toPlayerId) return alert('Receiver Player ID is required.');
+    if (!Number.isFinite(amt) || amt <= 0) return alert('Enter a valid amount.');
+
+    setTransferLoading(true);
+    try {
+      const response = await fetch('/api/wallet/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from_player_id: fromPlayerId,
+          to_player_id: toPlayerId,
+          amount: amt,
+          request_id: `${fromPlayerId}:${toPlayerId}:${Date.now()}`,
+          description: 'Player transfer'
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Transfer failed');
+
+      alert('Transfer successful!');
+      setTransferForm({ to_player_id: '', amount: '' });
+      await fetchBalance();
+      if (activeTab === 'history') await fetchHistory();
+    } catch (e) {
+      console.error(e);
+      alert(e.message || 'Transfer failed');
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4 md:p-8">
@@ -134,6 +223,11 @@ const PlayerBalance = () => {
             <div className="text-2xl md:text-4xl font-orbitron font-black text-primary">
               ◈ {playerBalance?.balance?.toLocaleString() || '0'} TGC
             </div>
+            {Number(playerBalance?.locked_balance || 0) > 0 && (
+              <div className="text-xs text-gray-400 mt-1">
+                Locked: <span className="text-accent font-bold">◈ {Number(playerBalance.locked_balance).toLocaleString()}</span>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-gray-400 text-[12px] md:text-sm uppercase md:tracking-widest tracking-[0.4px]">Membership Status</div>
@@ -153,7 +247,7 @@ const PlayerBalance = () => {
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="grid grid-cols-2 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
           <button
             onClick={() => setShowRechargeModal(true)}
             className="px-3 py-2 md:px-4 md:py-3 bg-primary text-dark rounded-lg font-bold hover:bg-primary/80 transition-all text-[13px] md:text-sm"
@@ -165,6 +259,12 @@ const PlayerBalance = () => {
             className="px-3 py-2 md:px-4 md:py-3 bg-pink text-white rounded-lg font-bold hover:bg-pink/80 transition-all text-[13px] md:text-sm"
           >
             <i className="fa-solid fa-crown mr-2"></i>Get Membership
+          </button>
+          <button
+            onClick={() => setActiveTab('transfer')}
+            className="px-3 py-2 md:px-4 md:py-3 bg-white/5 text-white rounded-lg font-bold hover:bg-white/10 transition-all text-[13px] md:text-sm hidden md:block"
+          >
+            <i className="fa-solid fa-paper-plane mr-2"></i>Transfer
           </button>
         </div>
       </div>
@@ -200,6 +300,28 @@ const PlayerBalance = () => {
           }`}
         >
           <i className="fa-solid fa-chart-pie mr-2"></i>Stats
+        </button>
+
+        <button
+          onClick={() => setActiveTab('transfer')}
+          className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
+            activeTab === 'transfer'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          <i className="fa-solid fa-paper-plane mr-2"></i>Transfer
+        </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`px-3 py-2 font-bold text-[12px] md:text-sm uppercase tracking-widest border-b-2 transition-colors ${
+            activeTab === 'history'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          <i className="fa-solid fa-clock-rotate-left mr-2"></i>History
         </button>
 
         <button
@@ -317,6 +439,87 @@ const PlayerBalance = () => {
             </div>
           </div>
         )}
+
+        {/* Transfer Tab */}
+        {activeTab === 'transfer' && (
+          <div className="space-y-4">
+            <div className="bg-bg-card border border-white/10 rounded-xl p-4">
+              <div className="text-gray-400 text-xs uppercase tracking-widest mb-1">Send balance to another player</div>
+              <div className="text-white font-bold text-sm mb-4">
+                Sender Wallet ID: <span className="font-mono text-primary">{profile?.player_id || 'N/A'}</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-500 text-xs uppercase tracking-widest">Receiver Player ID</label>
+                  <input
+                    value={transferForm.to_player_id}
+                    onChange={(e) => setTransferForm({ ...transferForm, to_player_id: e.target.value })}
+                    placeholder="PLAYER_XXXX_XXXX"
+                    className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs uppercase tracking-widest">Amount (◈)</label>
+                  <input
+                    value={transferForm.amount}
+                    onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+                    placeholder="100"
+                    type="number"
+                    min="1"
+                    className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                  />
+                </div>
+              </div>
+
+              <button
+                disabled={transferLoading}
+                onClick={submitTransfer}
+                className="mt-4 w-full px-4 py-3 bg-primary text-dark rounded-lg font-bold hover:bg-primary/80 transition-all disabled:opacity-60"
+              >
+                {transferLoading ? 'Transferring...' : 'Send Transfer'}
+              </button>
+              <div className="text-[11px] text-gray-500 mt-2">
+                Tip: Double-check the receiver Player ID. Transfers are final.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <div className="space-y-3">
+            {historyLoading ? (
+              <div className="flex items-center gap-2 text-gray-400">
+                <i className="fa-solid fa-spinner fa-spin"></i> Loading history...
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-gray-500 text-sm">No transactions yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {history.map((tx) => {
+                  const amount = Number(tx.amount || 0);
+                  const isOut = amount < 0;
+                  return (
+                    <div key={tx.tx_id || tx.created_at} className="bg-bg-card border border-white/10 rounded-lg p-3 flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="text-white font-bold text-sm truncate">
+                          {(tx.type || '').toUpperCase().replaceAll('_', ' ')}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {tx.description || '—'} • {tx.created_at ? new Date(tx.created_at).toLocaleString() : ''}
+                        </div>
+                      </div>
+                      <div className={`font-orbitron font-black ${isOut ? 'text-pink' : 'text-tertiary'}`}>
+                        {isOut ? '-' : '+'}◈ {Math.abs(amount).toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/*Store Tab*/}
@@ -358,6 +561,49 @@ const PlayerBalance = () => {
                 </div>
               </div>
             )}
+
+            {/* Payment details (required) */}
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">WhatsApp Number</label>
+                <input
+                  value={requestInfo.whatsapp_number}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, whatsapp_number: e.target.value }))}
+                  placeholder="+97798XXXXXXXX"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">Payment Method</label>
+                <select
+                  value={requestInfo.payment_method}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, payment_method: e.target.value }))}
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                >
+                  <option value="esewa" className="bg-black text-white">eSewa</option>
+                  <option value="khalti" className="bg-black text-white">Khalti</option>
+                  <option value="bank" className="bg-black text-white">Bank</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">Account Number</label>
+                <input
+                  value={requestInfo.payment_account_number}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, payment_account_number: e.target.value }))}
+                  placeholder="98XXXXXXXX / 01-XXXXXX / etc"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">Account Owner Name</label>
+                <input
+                  value={requestInfo.payment_account_owner}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, payment_account_owner: e.target.value }))}
+                  placeholder="Owner full name"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                />
+              </div>
+            </div>
 
             {/* WhatsApp Contact Info */}
             <div className="bg-green-400/10 border border-green-400/30 rounded-lg p-4 mb-4">
@@ -426,6 +672,49 @@ const PlayerBalance = () => {
                 </div>
               </div>
             )}
+
+            {/* Payment details (required) */}
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">WhatsApp Number</label>
+                <input
+                  value={requestInfo.whatsapp_number}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, whatsapp_number: e.target.value }))}
+                  placeholder="+97798XXXXXXXX"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">Payment Method</label>
+                <select
+                  value={requestInfo.payment_method}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, payment_method: e.target.value }))}
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                >
+                  <option value="esewa">eSewa</option>
+                  <option value="khalti">Khalti</option>
+                  <option value="bank">Bank</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">Account Number</label>
+                <input
+                  value={requestInfo.payment_account_number}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, payment_account_number: e.target.value }))}
+                  placeholder="98XXXXXXXX / 01-XXXXXX / etc"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs uppercase tracking-widest">Account Owner Name</label>
+                <input
+                  value={requestInfo.payment_account_owner}
+                  onChange={(e) => setRequestInfo(prev => ({ ...prev, payment_account_owner: e.target.value }))}
+                  placeholder="Owner full name"
+                  className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-primary text-sm"
+                />
+              </div>
+            </div>
 
             {/* WhatsApp Contact Info */}
             <div className="bg-green-400/10 border border-green-400/30 rounded-lg p-4 mb-4">

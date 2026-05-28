@@ -432,14 +432,14 @@ const AdminPanel = ({
             </div>
           </div>
 
-          <div className="w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 flex gap-1 md:gap-2 scrollbar-hide">
+          <div className="w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 flex gap-1 md:gap-2 custom-scrollbar">
             {[
               { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' }, 
+              { id: 'players', label: 'Players', icon: 'fa-user-gear' },
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
               { id: 'leaderboard', label: 'Ranks', icon: 'fa-crown' },
               { id: 'streams', label: 'Feeds', icon: 'fa-bolt' }, 
               { id: 'registrations', label: 'Personnel', icon: 'fa-users' },
-              { id: 'Player Stats', label: 'Player Stats', icon: 'fa-chart-line' },
               { id: 'requests', label: 'Requests', icon: 'fa-inbox' },
               { id: 'logs', label: 'Logs', icon: 'fa-list-ul' }
             ].map(tab => (
@@ -526,7 +526,7 @@ const AdminPanel = ({
               </div>
             )}
 
-            {activeView !== 'dashboard' && activeView !== 'logs' && activeView !== 'Player Stats' && (
+            {activeView !== 'dashboard' && activeView !== 'logs' && activeView !== 'players' && (
               <div className="bg-bg-card rounded-2xl border border-white/5 overflow-hidden animate-fade-in shadow-2xl">
                 <div className="p-4 md:p-6 border-b border-white/5 flex flex-col gap-4">
                   <div className="relative w-full flex-grow">
@@ -679,7 +679,7 @@ const AdminPanel = ({
               </div>
             )}
 
-            {activeView === 'Player Stats' && (
+            {activeView === 'players' && (
               <PlayerStatsAdmin registrations={registrations} />
             )}
 

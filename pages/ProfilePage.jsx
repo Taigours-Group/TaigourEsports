@@ -238,6 +238,22 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                 </button>
               </div>
 
+              {/* Wallet quick actions */}
+              <div className="flex flex-col sm:flex-row gap-2 mt-3 justify-center md:justify-start">
+                <button
+                  onClick={() => setActiveTab('wallet')}
+                  className="px-4 py-2 bg-primary text-dark rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-primary/80 transition-all"
+                >
+                  Open Wallet
+                </button>
+                <Link
+                  to="/tournaments"
+                  className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all text-center"
+                >
+                  Join Tournaments
+                </Link>
+              </div>
+
               {/* Badges */}
               
             </div>
