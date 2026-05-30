@@ -1377,8 +1377,20 @@ app.get('/api/transactions/:userId', async (req, res) => {
   }
 });
 
-// Serve static files from the Vite build directory
-app.use(express.static(path.join(__dirname, 'dist')));
+// Serve static files from the public and Vite build directories
+const publicPath = path.join(__dirname, 'public');
+const distPath = path.join(__dirname, 'dist');
+app.use(express.static(publicPath));
+app.use(express.static(distPath));
+
+app.use((req, res, next) => {
+  // Keep API routes and asset requests separate from client-side routing.
+  if (req.path.startsWith('/api') || path.extname(req.path)) {
+    return next();
+  }
+
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 // --- Start server ---
 app.listen(PORT, () => console.log(`Taigour E-Sports server running on http://localhost:${PORT}`));

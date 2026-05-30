@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AdminGate from './components/AdminGate.jsx';
@@ -81,6 +81,65 @@ const App = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const RouteMeta = () => {
+    const location = useLocation();
+
+    useEffect(() => {
+      const path = location.pathname.replace(/\/$/, '') || '/';
+      const defaultMeta = {
+        title: 'Taigour E-Sports | Nepal Esports Tournaments',
+        description: 'Taigour E-Sports is Nepal’s premier esports tournament platform for PUBG Mobile, Free Fire, Ludo, live streams, leaderboards, and competitive gaming events.'
+      };
+
+      const routeMeta = {
+        '/': defaultMeta,
+        '/tournaments': {
+          title: 'Find Nepal Esports Tournaments | Taigour E-Sports',
+          description: 'Browse and register for PUBG Mobile, Free Fire, and Ludo tournaments across Nepal with Taigour E-Sports.'
+        },
+        '/leaderboard': {
+          title: 'Leaderboard Rankings | Taigour E-Sports',
+          description: 'Track top players and teams in Nepal esports tournaments with live leaderboard rankings.'
+        },
+        '/streams': {
+          title: 'Live Esports Streams | Taigour E-Sports',
+          description: 'Watch live competitive esports streams from Nepal gaming events and stay updated on current matches.'
+        },
+        '/profile': {
+          title: 'Player Profile | Taigour E-Sports',
+          description: 'Manage your player account and tournament registrations on Taigour E-Sports.'
+        },
+        '/admin': {
+          title: 'Admin Dashboard | Taigour E-Sports',
+          description: 'Manage tournaments, leaderboards, streams, and registrations on Taigour E-Sports.'
+        }
+      };
+
+      const meta = path.startsWith('/tournament')
+        ? {
+            title: 'Tournament Details | Taigour E-Sports',
+            description: 'View tournament details and register for competitive esports events in Nepal.'
+          }
+        : routeMeta[path] || defaultMeta;
+
+      const setMeta = (selector, value) => {
+        const element = document.querySelector(selector);
+        if (element) {
+          element.setAttribute('content', value);
+        }
+      };
+
+      document.title = meta.title;
+      setMeta("meta[name='description']", meta.description);
+      setMeta("meta[property='og:title']", meta.title);
+      setMeta("meta[property='og:description']", meta.description);
+      setMeta("meta[name='twitter:title']", meta.title);
+      setMeta("meta[name='twitter:description']", meta.description);
+    }, [location.pathname]);
+
+    return null;
+  };
 
   // ── Admin handlers ──────────────────────────────────────────────
 
@@ -172,6 +231,7 @@ const App = () => {
 
   return (
     <Router>
+      <RouteMeta />
       <div className="min-h-screen relative bg-bg-dark">
         <Header />
         <OnboardingModal />

@@ -347,7 +347,7 @@ const AdminPanel = ({
       ? ` Tournament date: ${tournamentDate}${tournamentTime ? ` at ${tournamentTime}` : ''}.`
       : '';
 
-    const message = `Hello ${registration.playername}, your registration is successful for ${tournamentName}. Your UID is ${registration.gameuid}.${dateLine} Welcome to Taigours E-Sports!`;
+    const message = `Hello ${registration.playername}, your registration is successful for ${tournamentName}. Your UID is ${registration.gameuid}.${dateLine} Welcome to Taigour E-Sports!`;
     const encodedMessage = encodeURIComponent(message);
     const webWhatsAppUrl = `https://web.whatsapp.com/send?phone=${sanitizedNumber}&text=${encodedMessage}`;
     const mobileWhatsAppUrl = `https://wa.me/${sanitizedNumber}?text=${encodedMessage}`;

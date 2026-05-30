@@ -86,6 +86,6 @@ export const REQUEST_STATUS = {
 export const ADMIN_WHATSAPP = {
   number: '+9779766115626', // Replace with actual admin WhatsApp number (with country code)
   displayNumber: '+977 97661 15626', // Formatted for display
-  name: 'Taigours Admin',
+  name: 'Taigour Admin',
   message: 'Payment & Membership Requests'
 };

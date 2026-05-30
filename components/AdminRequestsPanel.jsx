@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { REQUEST_TYPES, REQUEST_STATUS, MEMBERSHIP_BENEFITS, ADMIN_WHATSAPP } from '../constants/balanceConstants';
 
 const BRAND = {
-  name: 'Taigours E-Sports',
+  name: 'Taigour E-Sports',
   logoUrl: 'https://res.cloudinary.com/dbjjzyrr3/image/upload/v1768567786/tiger-logo_jcf2zj.png'
 };
 

@@ -1,4 +1,10 @@
 {
-  "name": "Taigour's E-Sports",
-  "description": "A high-performance gaming tournament platform for Free Fire, PUBG, and Ludo champions. Taigour E-Sports"
-} 
+  "name": "Taigour E-Sports",
+  "short_name": "Taigour",
+  "description": "Taigour E-Sports is a Nepal esports tournament platform for PUBG Mobile, Free Fire, Ludo, and competitive gaming events.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff0000",
+  "orientation": "portrait-primary"
+}
