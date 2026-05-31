@@ -7,6 +7,7 @@ const PlayerBalance = () => {
   const { user, profile } = useAuth();
   const [playerBalance, setPlayerBalance] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('balance');
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [showMembershipModal, setShowMembershipModal] = useState(false);
@@ -27,8 +28,6 @@ const PlayerBalance = () => {
   useEffect(() => {
     if (user) {
       fetchBalance();
-      const interval = setInterval(fetchBalance, 30000); // Refresh every 30 seconds
-      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -39,8 +38,10 @@ const PlayerBalance = () => {
     }
   }, [profile]);
 
-  const fetchBalance = async () => {
+  const fetchBalance = async (manual = false) => {
     if (!user) return;
+    if (manual) setRefreshing(true);
+    else setLoading(true);
     try {
       const { data, error } = await balanceService.getPlayerBalance(user.id);
       if (!error && data) {
@@ -49,7 +50,8 @@ const PlayerBalance = () => {
     } catch (error) {
       console.error('Failed to fetch balance:', error);
     } finally {
-      setLoading(false);
+      if (manual) setRefreshing(false);
+      else setLoading(false);
     }
   };
 
@@ -220,14 +222,17 @@ const PlayerBalance = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-gray-400 text-[12px] md:text-sm uppercase md:tracking-widest tracking-[0.4px]">Available Balance</h3>
-            <div className="text-xl md:text-4xl font-orbitron font-black text-primary">
+            <div className="flex flex-row center text-[16px] md:text-4xl font-orbitron font-black text-primary">
               ◈ {playerBalance?.balance?.toLocaleString() || '0'} TGC
-            </div>
-            {Number(playerBalance?.locked_balance || 0) > 0 && (
-              <div className="text-xs text-gray-400 mt-1">
-                Locked: <span className="text-accent font-bold">◈ {Number(playerBalance.locked_balance).toLocaleString()}</span>
-              </div>
-            )}
+          <button
+            onClick={() => fetchBalance(true)}
+            disabled={refreshing || loading}
+            className={`text-white ml-1 md:ml-3 rounded-lg transition-all text-[15px] md:text-sm ${refreshing || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
+            <i className={`fa-solid fa-sync mr-2 ${refreshing ? 'animate-spin' : ''}`}></i>
+          </button>
+          </div>
+            
           </div>
           <div className="text-right">
             <div className="text-gray-400 text-[12px] md:text-sm uppercase md:tracking-widest tracking-[0.4px]">Membership Status</div>
@@ -266,6 +271,7 @@ const PlayerBalance = () => {
           >
             <i className="fa-solid fa-paper-plane mr-2"></i>Transfer
           </button>
+          
         </div>
       </div>
 

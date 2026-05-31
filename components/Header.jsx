@@ -20,7 +20,7 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch balance whenever the logged-in user changes
+  // Fetch balance whenever the logged-in user first appears (avoid repeated fetches on focus)
   const fetchBalance = async () => {
     try {
       const { data, error } = await balanceService.getPlayerBalance(user.id);
@@ -32,12 +32,17 @@ const Header = () => {
     }
   };
 
+  const fetchedBalanceRef = useRef(false);
+
   useEffect(() => {
-    if (user?.id) {
-      fetchBalance();
-    } else {
+    if (!user?.id) {
       setPlayerBalance(null);
+      fetchedBalanceRef.current = false; // reset when logged out
+      return;
     }
+    if (fetchedBalanceRef.current) return; // already fetched for this session
+    fetchedBalanceRef.current = true;
+    fetchBalance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
