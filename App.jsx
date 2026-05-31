@@ -237,8 +237,7 @@ const App = () => {
         <OnboardingModal />
 
         <main className="min-h-[80vh]">
-          {/* Suspense is required to support lazy-loaded pages */}
-          <Suspense fallback={<Preloader />}>
+          
             <Routes>
               <Route path="/" element={<HomePage tournaments={tournaments} leaderboard={leaderboard} registrations={registrations} />} />
               <Route path="/tournaments" element={<TournamentsPage tournaments={tournaments} registrations={registrations} />} />
@@ -248,7 +247,7 @@ const App = () => {
               <Route path="/profile" element={<ProfilePage tournaments={tournaments} registrations={registrations} leaderboard={leaderboard} />} />
 
               {/* Admin Route */}
-              <Route path="/admin" element={
+              <Route path="/aluchap" element={
                 <AdminGate>
                   <AdminPanel
                     tournaments={tournaments}
@@ -266,7 +265,6 @@ const App = () => {
                 </AdminGate>
               } />
             </Routes>
-          </Suspense>
         </main>
 
         <Footer />
