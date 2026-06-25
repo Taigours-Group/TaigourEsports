@@ -6,7 +6,6 @@ import Footer from './components/Footer.jsx';
 import AdminGate from './components/AdminGate.jsx';
 import AdminPanel from './components/AdminPanel.jsx';
 import Preloader from './components/Preloader.jsx';
-import OnboardingModal from './components/OnboardingModal.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { dbService } from './services/dbService.js';
 
@@ -17,6 +16,7 @@ const TournamentDetailsPage = lazy(() => import('./pages/TournamentDetailsPage.j
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage.jsx'));
 const StreamsPage = lazy(() => import('./pages/StreamsPage.jsx'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
+const BecomePartnerPage = lazy(() => import('./pages/BecomePartnerPage.jsx'));
 
 const App = () => {
   const [loading, setLoading] = useState(true);
@@ -234,7 +234,6 @@ const App = () => {
       <RouteMeta />
       <div className="min-h-screen relative bg-bg-dark">
         <Header />
-        <OnboardingModal />
 
         <main className="min-h-[80vh]">
           
@@ -245,9 +244,10 @@ const App = () => {
               <Route path="/leaderboard" element={<LeaderboardPage leaderboard={leaderboard} />} />
               <Route path="/streams" element={<StreamsPage streams={streams} />} />
               <Route path="/profile" element={<ProfilePage tournaments={tournaments} registrations={registrations} leaderboard={leaderboard} />} />
+              <Route path="/become-partner" element={<BecomePartnerPage />} />
 
               {/* Admin Route */}
-              <Route path="/aluchap" element={
+              <Route path="/admin" element={
                 <AdminGate>
                   <AdminPanel
                     tournaments={tournaments}

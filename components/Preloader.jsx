@@ -80,7 +80,7 @@ const Preloader = () => {
           </h3>
           <div className="flex items-center justify-center gap-2">
             <span className="h-px w-8 bg-gradient-to-r from-transparent to-primary/40"></span>
-            <p className="text-primary uppercase tracking-[0.6em] text-[10px] font-black">Elite Protocols</p>
+            <p className="text-primary uppercase tracking-[0.6em] text-[10px] font-black">E-SPORTS DIVISION</p>
             <span className="h-px w-8 bg-gradient-to-l from-transparent to-primary/40"></span>
           </div>
         </div>

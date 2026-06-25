@@ -235,6 +235,90 @@ class DBService {
     console.log(`Log: ${method} ${endpoint}`);
   }
 
+  // Team Registrations
+  async getTeamRegistrations() {
+    try {
+      const response = await fetch('/api/team-registrations');
+      if (!response.ok) throw new Error('Failed to fetch team registrations');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching team registrations:', error);
+      return [];
+    }
+  }
+
+  async addTeamRegistration(teamData) {
+    try {
+      const response = await fetch('/api/team-registrations/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(teamData)
+      });
+
+      if (!response.ok) throw new Error('Failed to add team registration');
+      const result = await response.json();
+      this.addLog('POST', '/api/team-registrations/add');
+      return result;
+    } catch (error) {
+      console.error('Error adding team registration:', error);
+      throw error;
+    }
+  }
+
+  async updateTeamRegistration(teamId, teamData) {
+    try {
+      const response = await fetch(`/api/team-registrations/${teamId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(teamData)
+      });
+
+      if (!response.ok) throw new Error('Failed to update team registration');
+      const result = await response.json();
+      this.addLog('PUT', `/api/team-registrations/${teamId}`);
+      return result;
+    } catch (error) {
+      console.error('Error updating team registration:', error);
+      throw error;
+    }
+  }
+
+  async getTeamRegistrationById(teamId) {
+    try {
+      const response = await fetch(`/api/team-registrations/${teamId}`);
+      if (!response.ok) throw new Error('Failed to fetch team registration');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching team registration:', error);
+      return null;
+    }
+  }
+
+  // Upload file to storage (for team logos and citizenship photos)
+  async uploadFile(bucket, path, file) {
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+      
+      const { data: publicData } = supabase
+        .storage
+        .from(bucket)
+        .getPublicUrl(path);
+
+      return publicData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw error;
+    }
+  }
+
   // Global State Sync (for Admin restore)
   async restoreDatabase(data) {
     try {

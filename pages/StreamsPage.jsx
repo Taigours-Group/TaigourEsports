@@ -3,6 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ChatMessage, StreamVideo, ChatReaction } from '../types.js';
 import { MOCK_CHAT_USERS, MOCK_MESSAGES } from '../constants.js';
+import FadeContent from '../components/ReactBits/FadeContent';
+import BlurText from '../components/ReactBits/BlurText';
+import ShinyText from '../components/ReactBits/ShinyText';
 
 const StreamsPage = ({ streams }) => {
   const [activeStream, setActiveStream] = useState(null);

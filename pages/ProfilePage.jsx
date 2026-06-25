@@ -3,6 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
 import PlayerBalance from '../components/PlayerBalance';
+import FadeContent from '../components/ReactBits/FadeContent';
+import BlurText from '../components/ReactBits/BlurText';
+import ShinyText from '../components/ReactBits/ShinyText';
 
 const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
   const { user, profile, loading, loginWithGoogle, logout, reloadProfile } = useAuth();

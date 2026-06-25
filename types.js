@@ -24,8 +24,51 @@ export const GameType = {
  * @property {string[]} [rules]
  * @property {{position: string, reward: string}[]} [prize_breakdown]
  * @property {number} [max_slots]
+ * @property {boolean} [login_required] - Whether users must login to register
+ * @property {string} [payment_method] - 'tgc_coin' or 'direct_payment'
+ * @property {string} [payment_type] - Alias for payment_method
+ * @property {Date} [created_at]
+ * @property {Date} [updated_at]
  */
 export const Tournament = {};
+
+/**
+ * @typedef {Object} TeamPlayer
+ * @property {string} id
+ * @property {string} player_name
+ * @property {string} player_uid - Game ID/UID
+ * @property {string} player_citizenship_photo - Photo URL or base64
+ * @property {Date} created_at
+ */
+export const TeamPlayer = {};
+
+/**
+ * @typedef {Object} TeamRegistration
+ * @property {string} id
+ * @property {string} tournament_id
+ * @property {string} team_name
+ * @property {string} team_tag
+ * @property {string} [team_logo]
+ * @property {string} manager_name
+ * @property {string} manager_contact
+ * @property {string} registrar_email
+ * @property {string} payment_method - 'tgc_coin' or 'direct_payment'
+ * @property {string} payment_status - 'pending', 'completed', 'failed'
+ * @property {string} [payment_reference_id]
+ * @property {number} total_players
+ * @property {string} [notes]
+ * @property {Date} registration_date
+ * @property {Date} created_at
+ * @property {Date} updated_at
+ */
+export const TeamRegistration = {};
+
+/**
+ * @typedef {Object} PaymentConfig
+ * @property {'tgc_coin' | 'direct_payment'} method
+ * @property {boolean} login_required
+ */
+export const PaymentConfig = {};
 
 /**
  * @typedef {Object} LeaderboardEntry
