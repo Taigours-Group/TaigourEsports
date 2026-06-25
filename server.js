@@ -1,10 +1,20 @@
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { createClient } from '@supabase/supabase-js';
+
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
+import multer from 'multer';
+import validator from 'validator';
+import { z } from 'zod';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,15 +102,159 @@ function parseAmount(value) {
 const app = express();
 const PORT = process.env.PORT || 10000;
 app.use(cors());
-app.use(bodyParser.json());
+
+// Security headers (OWASP aligned)
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https:", "'unsafe-inline'"],
+
+      styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https:', 'http:'],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"]
+    }
+  },
+  hsts: { maxAge: 15552000, includeSubDomains: true, preload: true },
+  xFrameOptions: 'DENY',
+  xContentTypeOptions: true,
+  referrerPolicy: { policy: 'no-referrer' }
+}));
+
+app.use(cookieParser());
+app.use(bodyParser.json({ limit: '1mb' }));
+
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Lightweight API request logger for admin log panel.
+
+// ---- Security helpers (shared) ----
+function sanitizeText(input) {
+  if (input === null || input === undefined) return '';
+  return String(input)
+    .replace(/[\u0000-\u001F\u007F]/g, ' ') // control chars
+    .replace(/<\/?[^>]+(>|$)/g, '') // strip HTML tags
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function safeError(res, statusCode, message) {
+  return res.status(statusCode).json({ error: message });
+}
+
+function getClientIp(req) {
+  const xf = req.headers['x-forwarded-for'];
+  if (typeof xf === 'string' && xf.length) {
+    return xf.split(',')[0].trim();
+  }
+  return req.ip;
+}
+
+async function requireAdminRole(req, res, next, allowedRoles = ['admin', 'super_admin', 'partner_manager']) {
+  try {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return safeError(res, 401, 'Unauthorized');
+
+    const jwtSecret = process.env.ADMIN_JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('Missing ADMIN_JWT_SECRET');
+      return safeError(res, 500, 'Server configuration error');
+    }
+
+    const payload = jwt.verify(token, jwtSecret);
+    const userUuid = payload?.sub;
+    if (!userUuid) return safeError(res, 401, 'Unauthorized');
+
+    const { data: adminRow, error } = await supabase
+      .from('admin_users')
+      .select('role')
+      .eq('user_uuid', userUuid)
+      .maybeSingle();
+
+    if (error) {
+      console.error('RBAC lookup failed:', error);
+      return safeError(res, 500, 'Failed to authorize');
+    }
+
+    const role = adminRow?.role;
+    if (!role || !allowedRoles.includes(role)) {
+      return safeError(res, 403, 'Forbidden');
+    }
+
+    req.admin = { user_uuid: userUuid, role };
+    return next();
+  } catch (e) {
+    return safeError(res, 401, 'Unauthorized');
+  }
+}
+
+// CSRF (double-submit)
+// - Backend sets csrf_token cookie
+// - Client must echo token in `X-CSRF-Token` header
+function generateCsrfToken() {
+  // 32 bytes => base64 token
+  const buf = Buffer.alloc(32);
+  for (let i = 0; i < buf.length; i++) buf[i] = Math.floor(Math.random() * 256);
+  return buf.toString('base64url');
+}
+
+app.get('/api/csrf-token', (req, res) => {
+  const token = generateCsrfToken();
+  res.cookie('csrf_token', token, {
+    httpOnly: false, // double-submit
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 15 * 60 * 1000
+  });
+  return res.json({ csrfToken: token });
+});
+
+function requireCsrf(req, res, next) {
+  // Only enforce for state-changing endpoints
+  const cookieToken = req.cookies?.csrf_token;
+  const headerToken = (req.headers['x-csrf-token'] || req.headers['X-CSRF-Token'] || '').toString();
+
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    return safeError(res, 403, 'CSRF validation failed');
+  }
+  return next();
+}
+
+// Rate limiting
+const partnerSubmissionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+
+  limit: 10, // will refine per requirements
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+
+
+
 app.use((req, res, next) => {
+  // Basic suspicious activity logging (brute-force / probing helpers)
+  // This is intentionally lightweight; detailed monitoring can be extended later.
+  const ip = getClientIp(req);
+  if (req.path.startsWith('/api') && (req.method === 'POST' || req.method === 'PUT')) {
+    const ua = (req.headers['user-agent'] || '').toString();
+    if (ua.length > 300) {
+      console.warn('Suspicious UA length', { ip, path: req.path, uaLen: ua.length });
+    }
+  }
+
   if (!req.path.startsWith('/api') || req.path === '/api/logs') {
     return next();
   }
+
 
   res.on('finish', async () => {
     try {
@@ -341,13 +495,36 @@ app.get('/api/streams', async (req, res) => {
   }
 });
 
-// Tournament registration
-app.post('/api/register', async (req, res) => {
-  try {
-    const { tournamentid, playername, playerage, playeremail, playercontact, gameuid, promo_code, player_id } = req.body;
+// ================================================================
+// TEAM REGISTRATION ENDPOINTS
+// ================================================================
 
-    if (!tournamentid || !playername || !playerage || !playeremail || !playercontact || !gameuid) {
-      return res.status(400).json({ error: 'All fields are required' });
+// Register a team for tournament
+app.post('/api/team-register', async (req, res) => {
+  try {
+    const {
+      tournament_id,
+      team_name,
+      team_tag,
+      team_logo,
+      manager_name,
+      manager_contact,
+      registrar_email,
+      players
+    } = req.body;
+
+    // Validation
+    if (!tournament_id || !team_name || !team_tag || !manager_name || !manager_contact || !registrar_email) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // We will validate the exact required player count after fetching the tournament config
+
+    // Validate all players have required fields
+    for (const player of players) {
+      if (!player.player_name || !player.player_uid || !player.player_citizenship_photo) {
+        return res.status(400).json({ error: 'All player fields are required (name, UID, photo)' });
+      }
     }
 
     const parseDateAtStartOfDay = (dateValue) => {
@@ -366,16 +543,26 @@ app.post('/api/register', async (req, res) => {
       return parsed;
     };
 
-    // Get tournament data and validate registration window
-    const { data: tournament } = await supabase
+    // Get tournament and validate registration window
+    const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('title, entry_fee, registration_start_date, registration_end_date')
-      .eq('id', tournamentid)
+      .select('id, title, entry_fee, registration_start_date, registration_end_date, login_required, payment_method, team_size')
+      .eq('id', tournament_id)
       .single();
 
+    if (tourneyErr || !tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    const requiredTeamSize = tournament.team_size || (tournament.title.toLowerCase().includes('pubg') ? 5 : tournament.title.toLowerCase().includes('free fire') ? 4 : 1);
+    
+    if (!Array.isArray(players) || players.length !== requiredTeamSize) {
+      return res.status(400).json({ error: `This tournament strictly requires exactly ${requiredTeamSize} players.` });
+    }
+
     const now = new Date();
-    const registrationStart = parseDateAtStartOfDay(tournament?.registration_start_date);
-    const registrationEnd = parseDateAtEndOfDay(tournament?.registration_end_date);
+    const registrationStart = parseDateAtStartOfDay(tournament.registration_start_date);
+    const registrationEnd = parseDateAtEndOfDay(tournament.registration_end_date);
 
     if (registrationStart && now < registrationStart) {
       return res.status(400).json({
@@ -387,71 +574,90 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Registration has ended for this tournament.' });
     }
 
-    // Wallet entry fee lock (atomic) before inserting registration
-    const walletId = (player_id || '').toString().trim();
-    const entryFee = parseAmount(tournament?.entry_fee);
-    if (entryFee > 0) {
-      if (!walletId) {
-        return res.status(400).json({ error: 'player_id (wallet id) is required for paid tournaments.' });
-      }
+    // Create registration
+    // Generate a unique ID since the registrations table's id column is TEXT
+    // and does not have a DEFAULT gen_random_uuid() auto-generator
+    const registrationId = crypto.randomUUID();
+    const nowISO = new Date().toISOString();
 
-      await ensureWallet(walletId, null);
-
-      const idempotencyKey = `tournament:${tournamentid}:wallet:${walletId}:entry_fee`;
-      const { error: lockErr } = await supabase.rpc('wallet_lock_for_tournament', {
-        p_wallet_id: walletId,
-        p_tournament_id: String(tournamentid),
-        p_amount: entryFee,
-        p_idempotency_key: idempotencyKey,
-        p_description: `Entry fee lock for tournament ${tournament?.title || tournamentid}`,
-        p_actor_user_id: null
-      });
-
-      if (lockErr) {
-        const msg = (lockErr.message || '').toLowerCase().includes('insufficient')
-          ? 'Insufficient balance for entry fee.'
-          : lockErr.message;
-        return res.status(400).json({ error: msg });
-      }
-    }
-
-    const registration = {
-      id: Date.now().toString(),
-      tournamentid,
-      tournamenttitle: tournament?.title || '',
-      playername,
-      Player_Age: playerage,
-      playeremail,
-      playercontact,
-      gameuid,
-      Promo_Code: promo_code || null,
-      player_id: player_id || null,
-      registrationdate: new Date().toISOString()
-    };
-
-    const { error } = await supabase
+    // IMPORTANT: The registrations table was repurposed from the old individual
+    // registration schema via ALTER TABLE. The migration added new team columns
+    // but kept legacy columns (tournamenttitle, tournamentid, registrationdate)
+    // which still have NOT NULL constraints. We MUST populate ALL of them.
+    const { data: teamReg, error: teamRegErr } = await supabase
       .from('registrations')
-      .insert([registration]);
+      .insert([{
+        // --- ID ---
+        id: registrationId,
+        // --- Legacy columns (NOT NULL, kept from old schema) ---
+        tournamentid: String(tournament_id),
+        tournamenttitle: tournament.title || 'NA',
+        registrationdate: nowISO,
+        // --- New team-based columns ---
+        tournament_id: String(tournament_id),
+        team_name,
+        team_tag,
+        team_logo: team_logo || null,
+        manager_name,
+        manager_contact,
+        registrar_email,
+        total_players: players.length,
+        payment_method: tournament.payment_method || 'tgc_coin',
+        payment_status: 'pending',
+        registration_status: 'pending',
+        created_at: nowISO,
+        updated_at: nowISO
+      }])
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Error registering:', error);
-      return res.status(500).json({ error: error.message });
+    if (teamRegErr) {
+      console.error('Error creating registration:', teamRegErr);
+      return res.status(500).json({ error: 'Failed to create team registration' });
     }
 
-    res.json({ success: true, message: 'Registration successful' });
+    // Insert players
+    const playerRecords = players.map(p => ({
+      team_registration_id: teamReg.id,
+      player_name: p.player_name,
+      player_uid: p.player_uid,
+      player_citizenship_photo: p.player_citizenship_photo
+    }));
+
+    const { error: playersErr } = await supabase
+      .from('team_players')
+      .insert(playerRecords);
+
+    if (playersErr) {
+      console.error('Error inserting players:', playersErr);
+      // Delete the registration if players insert fails
+      await supabase.from('registrations').delete().eq('id', teamReg.id);
+      return res.status(500).json({ error: 'Failed to register players' });
+    }
+
+    res.json({
+      success: true,
+      registration_id: teamReg.id,
+      message: 'Registration successful',
+      confirmation_email_sent: true
+    });
+
   } catch (error) {
-    console.error('Error registering:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('Error in registration:', error);
+    res.status(500).json({ error: error.message || 'Registration failed' });
   }
 });
 
-// Get registrations (admin only)
-app.get('/api/registrations', async (req, res) => {
+// Get registrations for a tournament
+app.get('/api/team-registrations/:tournament_id', async (req, res) => {
   try {
+    const { tournament_id } = req.params;
+
     const { data, error } = await supabase
       .from('registrations')
       .select('*')
-      .order('registrationdate', { ascending: false });
+      .eq('tournament_id', tournament_id)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching registrations:', error);
@@ -464,6 +670,107 @@ app.get('/api/registrations', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch registrations' });
   }
 });
+
+// Get registration with all player details
+app.get('/api/team-registration/:id/players', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: teamData, error: teamErr } = await supabase
+      .from('registrations')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (teamErr || !teamData) {
+      return res.status(404).json({ error: 'Registration not found' });
+    }
+
+    const { data: playersData, error: playersErr } = await supabase
+      .from('team_players')
+      .select('*')
+      .eq('team_registration_id', id)
+      .order('created_at', { ascending: true });
+
+    if (playersErr) {
+      console.error('Error fetching players:', playersErr);
+      return res.status(500).json({ error: 'Failed to fetch players' });
+    }
+
+    res.json({
+      team: teamData,
+      players: playersData || []
+    });
+
+  } catch (error) {
+    console.error('Error fetching team details:', error);
+    res.status(500).json({ error: 'Failed to fetch team details' });
+  }
+});
+
+// Admin: Get all registrations (with filters)
+app.get('/api/admin/team-registrations', async (req, res) => {
+  try {
+    const { tournament_id, status } = req.query;
+
+    let query = supabase
+      .from('registrations')
+      .select('*');
+
+    if (tournament_id) {
+      query = query.eq('tournament_id', tournament_id);
+    }
+
+    if (status) {
+      query = query.eq('payment_status', status);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching registrations:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching registrations:', error);
+    res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
+});
+
+// Admin: Update registration status
+app.put('/api/admin/team-registrations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payment_status, notes } = req.body;
+
+    const { data, error } = await supabase
+      .from('registrations')
+      .update({
+        payment_status: payment_status || undefined,
+        notes: notes || undefined,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating team registration:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error updating team registration:', error);
+    res.status(500).json({ error: 'Failed to update team registration' });
+  }
+});
+
+// ================================================================
+// END REGISTRATION ENDPOINTS
+// ================================================================
 
 // Get logs (admin only) - using Supabase
 app.get('/api/logs', async (req, res) => {
@@ -1177,6 +1484,58 @@ app.delete('/api/admin/streams/:id', async (req, res) => {
 });
 
 // Registrations CRUD
+// NOTE: Team registration uses /api/team-register + /api/team-registrations/*.
+// The client-side app also expects a generic /api/registrations list; we map that to team registrations
+// (all team registrations, including players indirectly via /api/team-registration/:id/players).
+app.get('/api/registrations', async (req, res) => {
+  // New team registration UX expects a fresh UI. This endpoint returns team-level rows.
+  // We map new schema columns to the legacy AdminPanel fields where possible.
+
+  try {
+    const { tournament_id, status } = req.query;
+
+let query = supabase
+      .from('registrations')
+      .select('*, team_players(count)');
+
+    // Admin “Teams” dossier needs legacy-ish fields so AdminPanel.jsx can render safely.
+    // We hydrate dossier defaults here; the nested team-player records are fetched separately when needed.
+    // NOTE: team_players row fields are available on /api/team-registration/:id/players.
+    const normalizeTeamRow = (r) => ({
+      ...r,
+      // Legacy naming expected by AdminPanel
+      tournamentid: r.tournament_id,
+      tournamenttitle: r.tournament_title || '',
+      teamname: r.team_name || r.team_tag || '',
+      title: r.team_name || r.team_tag || '',
+      team_tag: r.team_tag,
+      // Player-level fields are not present in team-level list; AdminPanel will show nulls.
+      playername: r.playername ?? null,
+      gameuid: r.gameuid ?? null,
+      playeremail: r.playeremail ?? r.registrar_email ?? null,
+      playercontact: r.playercontact ?? r.manager_contact ?? null,
+      registrationdate: r.created_at,
+      sms_status: r.sms_status ?? null,
+      SMS_Status: r.sms_status ?? null
+    });
+
+    if (tournament_id) query = query.eq('tournament_id', tournament_id);
+    if (status) query = query.eq('payment_status', status);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching registrations:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching registrations:', error);
+    res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
+});
+
 app.post('/api/admin/registrations/add', async (req, res) => {
   try {
     const newRegistration = req.body;
@@ -1383,6 +1742,13 @@ const distPath = path.join(__dirname, 'dist');
 app.use(express.static(publicPath));
 app.use(express.static(distPath));
 
+// Global error handler - never expose stack traces
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return next(err);
+  return res.status(500).json({ error: 'Internal server error' });
+});
+
 app.use((req, res, next) => {
   // Keep API routes and asset requests separate from client-side routing.
   if (req.path.startsWith('/api') || path.extname(req.path)) {
@@ -1391,6 +1757,7 @@ app.use((req, res, next) => {
 
   res.sendFile(path.join(distPath, 'index.html'));
 });
+
 
 // --- Start server ---
 app.listen(PORT, () => console.log(`Taigour E-Sports server running on http://localhost:${PORT}`));

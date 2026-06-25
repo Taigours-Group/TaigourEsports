@@ -175,7 +175,7 @@ const Header = () => {
                       className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
                       style={{
                         background: '#00d4ff',
-                        boxShadow: '0 0 8px #00d4ff, 0 0 16px rgba(0,212,255,0.3)',
+                        boxShadow: '0 0 8px #00d4ff, 0 0 16px rgba(0, 213, 255, 0.78)',
                       }}
                     ></span>
                   )}
@@ -397,7 +397,7 @@ const Header = () => {
       </nav>
 
       {/* ─── Mobile Bottom Navigation ─── */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full z-[100] bottom-nav-glass mobile-safe-bottom">
+      <div className="md:hidden fixed rounded-full m-2 bottom-0 left-0 right-0 z-[100] bottom-nav-glass mobile-safe-bottom">
         <div className="flex justify-around items-center h-16">
           {navLinks.map((link) => (
             <Link

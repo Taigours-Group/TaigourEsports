@@ -264,10 +264,10 @@ const PlayerStatsAdmin = ({ registrations }) => {
       </div>
 
       {/* Players Table */}
-      <div className="bg-bg-card rounded-2xl border border-white/5 overflow-hidden">
+      <div className="bg-bg-card rounded-2xl border border-white/5 overflow-x">
         {/* Keep this section height-limited so the Admin page doesn't grow endlessly */}
-        <div className="overflow-x-auto max-h-[520px]">
-          <table className="w-full">
+        <div className="overflow-x-auto max-h-[520px] w-full pr-2 custom-scrollbar">
+          <table className="min-w-max w-full">
 
             <thead className="bg-white/5 border-b border-white/10">
               <tr>

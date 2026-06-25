@@ -29,7 +29,8 @@ const AdminPanel = ({
     registration_url: '#', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800',
     description: '', rules: ['No Emulators allowed', 'Fair play protocol active'],
     prize_breakdown: [{ position: '1st', reward: '◈ 600' }, { position: '2nd', reward: '◈ 400' }],
-    max_slots: 48, stream_id: ''
+    max_slots: 48, stream_id: '',
+    login_required: true, payment_type: 'tgc_coin', team_size: 4
   };
 
   const initialLeaderboard = {
@@ -439,7 +440,7 @@ const AdminPanel = ({
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
               { id: 'leaderboard', label: 'Ranks', icon: 'fa-crown' },
               { id: 'streams', label: 'Feeds', icon: 'fa-bolt' }, 
-              { id: 'registrations', label: 'Personnel', icon: 'fa-users' },
+              { id: 'registrations', label: 'Teams', icon: 'fa-users' },
               { id: 'requests', label: 'Requests', icon: 'fa-inbox' },
               { id: 'logs', label: 'Logs', icon: 'fa-list-ul' }
             ].map(tab => (
@@ -565,7 +566,7 @@ const AdminPanel = ({
                 {activeView === 'registrations' && (
                   <div className="p-4 md:p-6 bg-white/2 border-b border-white/5 grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                     <div className="bg-white/5 p-3 md:p-4 rounded-xl border border-white/10">
-                      <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Registrations</div>
+                      <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Teams</div>
                       <div className="text-2xl md:text-3xl font-orbitron font-black text-primary">{registrations.length}</div>
                     </div>
                     <div className="bg-white/5 p-3 md:p-4 rounded-xl border border-white/10">
@@ -595,15 +596,15 @@ const AdminPanel = ({
                         <tr key={item.id} className="hover:bg-white/2 transition-colors">
                           <td className="p-4 md:p-6">
                             <div className="flex items-center gap-2 md:gap-4">
-                              {item.image || item.avatar ? (
-                                <img src={item.image || item.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" alt="" />
+                              {item.image || item.avatar || item.team_logo ? (
+                                <img src={item.image || item.avatar || item.team_logo} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" alt="" />
                               ) : (
                                 <div className="w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 flex-shrink-0">
                                   <i className="fa-solid fa-id-badge text-gray-700"></i>
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <div className="text-white font-bold text-sm md:text-base line-clamp-1">{item.title || item.teamname || item.playername}</div>
+                                <div className="text-white font-bold text-sm md:text-base line-clamp-1">{item.title || item.team_name || item.teamname || item.playername}</div>
                                 <div className="text-gray-500 text-[8px] md:text-[10px] font-bold uppercase tracking-widest truncate">
                                   {item.game || item.type || (activeView === 'registrations' ? `Sector: ${item.tournamenttitle}` : 'System Data')}
                                 </div>
@@ -616,10 +617,15 @@ const AdminPanel = ({
                               {item.maxSlots && <div className="text-gray-400">Slots: {item.max_slots}</div>}
                               {activeView === 'leaderboard' && <div className="text-accent font-bold">Rank: {item.rank || '-'} | Points: {item.points || 0} | K: {item.kills || 0} | W: {item.wins || 0}</div>}
                               {item.date && <div className="text-gray-400">Deploy: {item.date}</div>}
-                              {item.gameuid && (
+                              {(item.gameuid || item.team_tag) && (
                                 <div className="space-y-0.5">
-                                  <div className="text-white font-bold">UID: {item.gameuid}</div>
-                                  <div className="text-gray-500 text-[7px] md:text-[9px] truncate max-w-[150px]">{item.playeremail}</div>
+                                  <div className="text-white font-bold">{item.team_tag ? `Tag: ${item.team_tag}` : `UID: ${item.gameuid}`}</div>
+                                  <div className="text-gray-500 text-[7px] md:text-[9px] truncate max-w-[150px]">{item.registrar_email || item.playeremail}</div>
+                                </div>
+                              )}
+                              {item.manager_contact && (
+                                <div className="text-gray-300">
+                                  Contact: <span className="text-white font-bold">{item.manager_contact}</span>
                                 </div>
                               )}
                               {item.youtubeid && <div className="text-accent font-bold flex items-center gap-1"><i className="fab fa-youtube"></i> {item.youtubeid}</div>}
@@ -737,7 +743,11 @@ const AdminPanel = ({
                         <select
                           className="w-full bg-black border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-[9px] md:text-[10px] font-bold uppercase"
                           value={tourneyForm.type}
-                          onChange={e => setTourneyForm({ ...tourneyForm, type: e.target.value })}
+                          onChange={e => {
+                            const newType = e.target.value;
+                            const defaultSize = newType === 'pubg' ? 5 : (newType === 'freefire' ? 4 : 1);
+                            setTourneyForm({ ...tourneyForm, type: newType, team_size: defaultSize });
+                          }}
                         >
                           <option value="freefire">Free Fire</option>
                           <option value="pubg">PUBG Mobile</option>
@@ -751,6 +761,17 @@ const AdminPanel = ({
                           className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
                           value={tourneyForm.max_slots}
                           onChange={e => setTourneyForm({ ...tourneyForm, max_slots: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">Team Size</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          className="w-full bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-white outline-none focus:border-primary transition-all text-xs"
+                          value={tourneyForm.team_size || 4}
+                          onChange={e => setTourneyForm({ ...tourneyForm, team_size: parseInt(e.target.value) || 1 })}
                         />
                       </div>
                     </div>
@@ -862,6 +883,66 @@ const AdminPanel = ({
                           value={tourneyForm.entry_fee}
                           onChange={e => setTourneyForm({ ...tourneyForm, entry_fee: e.target.value })}
                         />
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 md:p-5 space-y-4">
+                      <h4 className="text-sm font-orbitron font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                        <i className="fa-solid fa-lock-open text-primary"></i> Registration Configuration
+                      </h4>
+
+                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                        <div>
+                          <div className="text-white font-bold text-xs md:text-sm uppercase tracking-widest">Login Required</div>
+                          <div className="text-[8px] md:text-[9px] text-gray-500 uppercase font-bold tracking-widest mt-0.5">Users must authenticate before registration</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTourneyForm({ ...tourneyForm, login_required: !tourneyForm.login_required })}
+                          className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${tourneyForm.login_required ? 'bg-primary shadow-[0_0_10px_rgba(0,212,255,0.5)]' : 'bg-gray-800'}`}
+                        >
+                          <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${tourneyForm.login_required ? 'left-7' : 'left-1'}`}></div>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest block">Payment Method</label>
+                        <div className="grid grid-cols-2 gap-2 md:gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setTourneyForm({ ...tourneyForm, payment_type: 'tgc_coin', login_required: true })}
+                            className={`p-3 md:p-4 rounded-xl border transition-all text-center ${
+                              tourneyForm.payment_type === 'tgc_coin'
+                                ? 'bg-primary/20 border-primary text-primary'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                            }`}
+                          >
+                            <i className="fa-solid fa-coins text-lg md:text-2xl mb-2 block"></i>
+                            <div className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest">TGC Coin</div>
+                            <div className="text-[7px] md:text-[8px] text-gray-500 mt-1">Requires Login</div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setTourneyForm({ ...tourneyForm, payment_type: 'direct_payment' })}
+                            className={`p-3 md:p-4 rounded-xl border transition-all text-center ${
+                              tourneyForm.payment_type === 'direct_payment'
+                                ? 'bg-pink/20 border-pink text-pink'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                            }`}
+                          >
+                            <i className="fa-solid fa-credit-card text-lg md:text-2xl mb-2 block"></i>
+                            <div className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest">Direct Payment</div>
+                            <div className="text-[7px] md:text-[8px] text-gray-500 mt-1">Guest OK</div>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-2 md:p-3 bg-white/2 rounded-lg border border-white/5">
+                        <p className="text-[7px] md:text-[8px] text-gray-400 leading-relaxed">
+                          <i className="fa-solid fa-circle-info text-primary mr-1"></i>
+                          <strong>Rules:</strong> If <strong>TGC Coin</strong> is selected, login is enforced. If <strong>Direct Payment</strong> is selected, login can be disabled for guest registration.
+                        </p>
                       </div>
                     </div>
 

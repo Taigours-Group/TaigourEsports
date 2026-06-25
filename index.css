@@ -1,69 +1,166 @@
+html, body {
+  background-color: #0B0F14;
+  color: #F8FAFC;
+  font-family: 'Inter', sans-serif;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-        background-color: #070709;
-        color: white;
-        font-family: 'Rajdhani', sans-serif;
-        scroll-behavior: smooth;
-        overflow-x: hidden;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .glass {
-        background: rgba(15, 15, 19, 0.7);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
 
-      .bottom-nav-glass {
-        background: rgba(15, 15, 19, 0.7);
-        backdrop-filter: blur(20px);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .neon-border {
-        position: relative;
-        border: 1px solid rgba(0, 212, 255, 0.1);
-      }
-      .neon-border:hover {
-        border-color: rgba(0, 212, 255, 0.4);
-        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
-      }
-      .cyber-button {
-        clip-path: polygon(12% 0, 100% 0, 100% 75%, 88% 100%, 0 100%, 0 25%);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .cyber-button:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.2);
-      }
-      .text-glow {
-        text-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .custom-scrollbar::-webkit-scrollbar {
-        margin-top: 10px;
-        height: 5px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #00d4ff;
-        border-radius: 10px;
-      } 
+/* Base Headings */
+h1, h2, h3, h4, h5, h6, .font-space {
+  font-family: 'Space Grotesk', sans-serif;
+}
 
-      .sr-only {
-        position:absolute;
-        left:-9999px;
-      }
-      @media (max-width: 768px) {
-        .mobile-safe-bottom {
-          padding-bottom: env(safe-area-inset-bottom, 20px);
-        }
-      }
+/* Premium Minimal Cards */
+.glass {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
 
-      /* Desktop Navbar Animations */
-      @keyframes navPulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(0.7); }
-      }
+.bottom-nav-glass {
+  background: rgba(11, 15, 20, 0.85);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Clean UI borders */
+.clean-border {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+.clean-border:hover {
+  border-color: rgba(34, 211, 238, 0.5); /* Cyan */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Minimal Button */
+.premium-button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+}
+.premium-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+.no-scrollbar::-webkit-scrollbar-track {
+  display: none;
+}
+.no-scrollbar::-webkit-scrollbar-thumb {
+  display: none;
+}
+
+/* Carousel specific scrollbar hiding */
+.overflow-x-auto {
+  /* Keep horizontal scrolling functional, but don't force-hide scrollbar globally */
+  -ms-overflow-style: auto !important;
+  scrollbar-width: auto !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  display: block !important;
+  height: 8px !important;
+}
+
+
+.custom-scrollbar::-webkit-scrollbar {
+  margin-top: 10px;
+  height: 5px;
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #111827; /* Navy */
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sr-only {
+  position: absolute;
+  left: -9999px;
+}
+
+@media (max-width: 768px) {
+  html {
+    width: 100vw !important;
+    overflow-x: hidden !important;
+    overflow-x: clip !important;
+  }
+
+  body {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    overflow-x: clip !important;
+    position: relative;
+  }
+
+  /* Prevent any child from causing overflow */
+  main {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Ensure all direct children of body fit within viewport */
+  body > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  /* Hide scrollbars on mobile completely */
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* Carousel mobile fix - hide scrollbar but allow scrolling */
+  .overflow-x-auto {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}

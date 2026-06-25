@@ -3,6 +3,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CountdownTimer, FeeTooltip } from './TournamentsPage';
+import TeamRegistrationForm from '../components/TeamRegistrationForm.jsx';
+import { dbService } from '../services/dbService.js';
+import FadeContent from '../components/ReactBits/FadeContent';
+import BlurText from '../components/ReactBits/BlurText';
+import ShinyText from '../components/ReactBits/ShinyText';
 
 const parseDateAtStartOfDay = (dateValue) => {
   if (!dateValue) return null;
@@ -41,15 +46,6 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   const [showRegModal, setShowRegModal] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [regForm, setRegForm] = useState({
-    playername: '',
-    playerage: '',
-    playeremail: '',
-    playercontact: '',
-    gameuid: '',
-    promo_code: '',
-    player_id: ''
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const touchStart = useRef(null);
@@ -58,20 +54,6 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-
-  // Auto-fill form with logged-in user data
-  useEffect(() => {
-    if (showRegModal && user && profile) { 
-      setRegForm(prev => ({
-        ...prev,
-        playername: profile.full_name || '',
-        playerage: profile.age || '',
-        playeremail: user.email || '',
-        playercontact: profile.contact_info || '',
-        player_id: profile.player_id || ''
-      }));
-    }
-  }, [showRegModal, user, profile]);
 
   if (!tournament) {
     return (
@@ -94,35 +76,51 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   const registrationOpen = !registrationUpcoming && !registrationEnded;
   const canRegister = registrationOpen && !isSoldOut;
 
-  const handleRegistrationSubmit = async (e) => {
-    e.preventDefault();
+  const handleRegistrationSubmit = async (formData) => {
     if (!canRegister || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/register', {
+      // 1. Upload files if provided
+      let teamLogoUrl = null;
+      if (formData.teamLogo) {
+        teamLogoUrl = await dbService.uploadFile('team-logos', `team_${Date.now()}_${formData.teamLogo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`, formData.teamLogo);
+      }
+
+      const uploadedPlayers = await Promise.all(formData.players.map(async (player) => {
+        let photoUrl = null;
+        if (player.citizenshipPhoto) {
+          photoUrl = await dbService.uploadFile('citizenship-photos', `player_${Date.now()}_${player.citizenshipPhoto.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`, player.citizenshipPhoto);
+        }
+        return {
+          player_name: player.fullName,
+          player_uid: player.uid,
+          player_citizenship_photo: photoUrl
+        };
+      }));
+
+      // 2. Submit to API
+      const response = await fetch('/api/team-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tournamentid: tournament.id,
-          playername: regForm.playername,
-          playerage: regForm.playerage,
-          playeremail: regForm.playeremail,
-          playercontact: regForm.playercontact,
-          gameuid: regForm.gameuid,
-          promo_code: regForm.promo_code,
-          player_id: regForm.player_id
+          tournament_id: tournament.id,
+          team_name: formData.teamName,
+          team_tag: formData.teamTag,
+          team_logo: teamLogoUrl,
+          manager_name: formData.managerFullName,
+          manager_contact: formData.managerContactNumber,
+          registrar_email: formData.registrantEmail,
+          players: uploadedPlayers
         })
       });
 
       if (response.ok) {
         const result = await response.json();
-        // Call the local onRegister to update local state and re-fetch registrations
         onRegister();
         setRegistrationSuccess(true);
         setShowToast(true);
 
-        // Give time for data to be re-fetched before closing modal
         setTimeout(() => {
           setShowToast(false);
           closeModals();
@@ -142,15 +140,6 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   const closeModals = () => {
     setShowRegModal(false);
     setRegistrationSuccess(false);
-    setRegForm({
-      playername: '',
-      playerage: '',
-      playeremail: '',
-      playercontact: '',
-      gameuid: '',
-      promo_code: '',
-      player_id: ''
-    });
     setIsSubmitting(false);
   };
 
@@ -436,60 +425,12 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
             </button>
 
             {!registrationSuccess ? (
-              <>
-                <div className="text-center mb-6 md:mb-10">
-                  <h3 className="text-xl md:text-3xl font-orbitron font-black text-white uppercase tracking-tight">REGISTRATION <span className="text-primary">PORTAL</span></h3>
-                  <p className="text-gray-500 font-rajdhani uppercase tracking-[0.3em] text-[8px] md:text-[10px] mt-1 md:mt-2">Initialize warrior authentication</p>
-                </div>
-                <form onSubmit={handleRegistrationSubmit} className="space-y-4 md:space-y-6 font-rajdhani">
-                  <div className="bg-primary/5 border border-primary/10 p-3 md:p-4 rounded flex justify-between gap-4">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[8px] md:text-[10px] text-primary/60 uppercase font-black tracking-widest">Sector</span>
-                      <span className="text-white font-bold truncate text-xs md:text-sm">{tournament.title}</span>
-                    </div>
-                    <div className="flex flex-col text-right shrink-0">
-                      <span className="text-[8px] md:text-[10px] text-primary/60 uppercase font-black tracking-widest">Fee</span>
-                      <span className="text-accent font-black text-xs md:text-sm">{tournament.entry_fee}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3 md:space-y-4">
-                    <div className="group">
-                      <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Player Name*</label>
-                      <input type="text" required placeholder="Player Full Name" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.playername} onChange={e => setRegForm({ ...regForm, playername: e.target.value })} />
-                    </div>
-                    <div className="group">
-                      <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Player Age*</label>
-                      <input type="number" required placeholder="Player Age" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.playerage} onChange={e => setRegForm({ ...regForm, playerage: e.target.value })} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                      <div className="group">
-                        <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Player Email*</label>
-                        <input type="email" required placeholder="player@email.com" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.playeremail} onChange={e => setRegForm({ ...regForm, playeremail: e.target.value })} />
-                      </div>
-                      <div className="group">
-                        <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Player WhatsApp Number*</label>
-                        <input type="tel" required placeholder="+977-98XXXXXXXX" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.playercontact} onChange={e => setRegForm({ ...regForm, playercontact: e.target.value })} />
-                      </div>
-                    </div>
-
-                    <div className="group">
-                      <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Game UID*</label>
-                      <input type="text" required placeholder="Game UID (i.e: 5498852398xxx955)" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 font-mono text-sm" value={regForm.gameuid} onChange={e => setRegForm({ ...regForm, gameuid: e.target.value })} />
-                    </div>
-                    <div className="group">
-                      <label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block group-focus-within:text-primary transition-colors">Promo Code (Optional)</label>
-                      <input type="text" placeholder="Enter Promo Code if you have one" className="w-full bg-white/5 border border-white/10 p-3 md:p-4 text-white focus:border-primary outline-none transition-all placeholder:text-white/20 text-sm" value={regForm.promo_code} onChange={e => setRegForm({ ...regForm, promo_code: e.target.value })} />
-                    </div>
-                  </div>
-                  <button type="submit" disabled={isSubmitting} className={`w-full py-4 md:py-5 font-orbitron font-black text-xs md:text-sm uppercase tracking-[0.2em] md:tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-primary text-bg-dark shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:shadow-[0_0_40px_rgba(0,212,255,0.4)]'}`}>
-                    {isSubmitting ? (
-                      <><i className="fas fa-circle-notch fa-spin"></i> SUBMITTING...</>
-                    ) : (
-                      <><i className="fas fa-file-signature"></i> CONFIRM REGISTRATION</>
-                    )}
-                  </button>
-                </form>
-              </>
+              <TeamRegistrationForm 
+                tournament={tournament}
+                onSubmit={handleRegistrationSubmit}
+                onCancel={closeModals}
+                isSubmitting={isSubmitting}
+              />
             ) : (
               <div className="text-center py-6 md:py-10 animate-fade-in">
                 <div className="w-16 h-16 md:w-20 md:h-20 bg-tertiary/20 border border-tertiary/40 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(0,255,128,0.2)]">
@@ -500,8 +441,8 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
 
                 <div className="bg-white/5 border border-white/10 rounded-lg p-5 md:p-6 mb-6 md:mb-8 text-left space-y-3 font-rajdhani text-sm">
                   <div className="flex justify-between border-b border-white/5 pb-2">
-                    <span className="text-gray-500 uppercase text-[9px] font-black tracking-widest shrink-0">Warrior ID</span>
-                    <span className="text-white font-mono truncate ml-4">{regForm.gameuid}</span>
+                    <span className="text-gray-500 uppercase text-[9px] font-black tracking-widest shrink-0">Team Name</span>
+                    <span className="text-white font-mono truncate ml-4">Authorized</span>
                   </div>
                   <div className="flex justify-between border-b border-white/5 pb-2">
                     <span className="text-gray-500 uppercase text-[9px] font-black tracking-widest shrink-0">Deploy</span>

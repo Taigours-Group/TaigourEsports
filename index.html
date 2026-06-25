@@ -30,7 +30,7 @@
     <link rel="icon" href="https://res.cloudinary.com/dbjjzyrr3/image/upload/v1768567786/tiger-logo_jcf2zj.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="/index.css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -40,38 +40,42 @@
         theme: {
           extend: {
             colors: {
-              primary: '#83e8fc',
-              accent: '#ffcc00',
-              secondary: '#8000ff',
-              tertiary: '#00ff80',
-              pink: '#ff0080',
-              'bg-dark': '#070709',
-              'bg-card': '#1a1a1a',
-              'dark': '#000000'
+              charcoal: '#0B0F14',
+              navy: '#111827',
+              cyan: '#22D3EE',
+              white: '#F8FAFC',
+              primary: '#22D3EE',
+              accent: '#F8FAFC',
+              'bg-dark': '#0B0F14',
+              'bg-card': '#111827',
+              dark: '#0B0F14'
             },
             fontFamily: {
-              orbitron: ['Orbitron', 'sans-serif'],
-              rajdhani: ['Rajdhani', 'sans-serif']
+              space: ['Space Grotesk', 'sans-serif'],
+              inter: ['Inter', 'sans-serif']
             },
             animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'glitch': 'glitch 2s infinite',
-              'fade-in': 'fadeIn 0.5s ease-out forwards',
-              'slide-up': 'slideUp 0.4s ease-out forwards',
+              'fade-in': 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'blur-in': 'blurIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'shine': 'shine 3s linear infinite',
             },
             keyframes: {
-              glitch: {
-                '0%, 100%': { transform: 'translate(0)' },
-                '33%': { transform: 'translate(-2px, 2px)' },
-                '66%': { transform: 'translate(2px, -2px)' },
-              },
               fadeIn: {
                 '0%': { opacity: '0' },
                 '100%': { opacity: '1' }
               },
               slideUp: {
-                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '0%': { transform: 'translateY(30px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' }
+              },
+              blurIn: {
+                '0%': { filter: 'blur(10px)', opacity: '0' },
+                '100%': { filter: 'blur(0)', opacity: '1' }
+              },
+              shine: {
+                '0%': { backgroundPosition: '200% center' },
+                '100%': { backgroundPosition: '-200% center' }
               }
             }
           }
@@ -113,6 +117,10 @@
 <body>
   <h1 class="sr-only">Taigour E-Sports Nepal</h1>
   <p class="sr-only">Taigour E-Sports is Nepal’s premier esports tournament platform for PUBG Mobile, Free Fire, Ludo, live streams, leaderboards, and competitive gaming events.</p>
+  <footer class="sr-only">
+    <h3>Taigour E-Sports</h3>
+    <p>© 2024 Taigour E-Sports. All rights reserved.</p>
+  </footer>
     <div id="root"></div>
 <script type="module" src="/index.jsx"></script>
 </body>
