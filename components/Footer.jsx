@@ -57,7 +57,7 @@ const Footer = () => (
           <ul className="space-y-3 font-inter text-gray-400 text-sm">
             <li className="flex items-center gap-3">
               <i className="fas fa-envelope text-cyan"></i>
-              <span>info@taigour-esports.com</span>
+              <span>taigouresports@gmail.com</span>
             </li>
             <li className="flex items-center gap-3">
               <i className="fas fa-phone text-cyan"></i>
