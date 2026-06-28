@@ -1,192 +1,298 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { ChatMessage, StreamVideo, ChatReaction } from '../types.js';
-import { MOCK_CHAT_USERS, MOCK_MESSAGES } from '../constants.js';
-import FadeContent from '../components/ReactBits/FadeContent';
-import BlurText from '../components/ReactBits/BlurText';
-import ShinyText from '../components/ReactBits/ShinyText';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import {
+  streamService,
+  getVisitorId,
+  CHAT_POLL_MS,
+  VIEWER_HEARTBEAT_MS
+} from '../services/streamService.js';
+
+const REACTION_EMOJIS = ['🔥', '👍', '❤️', '😂', '👏', '🎉'];
 
 const StreamsPage = ({ streams }) => {
+  const { user, profile } = useAuth();
+  const location = useLocation();
+
   const [activeStream, setActiveStream] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  
-  // Dynamic Stats State
-  const [viewers, setViewers] = useState(1204);
-  const [likes, setLikes] = useState(4820);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [engagementLoading, setEngagementLoading] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState('');
+  const [chatError, setChatError] = useState('');
+
+  const [viewers, setViewers] = useState(0);
+  const [likes, setLikes] = useState(0);
+  const [shares, setShares] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
-  
+  const [likePending, setLikePending] = useState(false);
+  const [sharePending, setSharePending] = useState(false);
+
   const chatContainerRef = useRef(null);
-  const MY_USERNAME = 'Guest_Pro';
- 
-  // Check admin status
+  const lastChatTimestampRef = useRef(null);
+  const visitorIdRef = useRef(getVisitorId());
+
+  const myUsername = useMemo(() => {
+    if (profile?.full_name) return profile.full_name.slice(0, 32);
+    if (user?.user_metadata?.full_name) return user.user_metadata.full_name.slice(0, 32);
+    if (profile?.player_id) return profile.player_id.slice(0, 32);
+    return `Guest_${visitorIdRef.current.slice(0, 6)}`;
+  }, [profile, user]);
+
   useEffect(() => {
     const loginTime = localStorage.getItem('admin_login_time');
     if (loginTime) {
       const now = new Date().getTime();
       const SESSION_TIMEOUT = 30 * 60 * 1000;
-      if (now - parseInt(loginTime) < SESSION_TIMEOUT) {
+      if (now - parseInt(loginTime, 10) < SESSION_TIMEOUT) {
         setIsAdmin(true);
       }
     }
   }, []);
 
-  // Initialize active stream
   useEffect(() => {
-    if (streams.length > 0 && !activeStream) {
+    if (streams.length === 0) return;
+
+    const params = new URLSearchParams(location.search);
+    const streamId = params.get('stream');
+    if (streamId) {
+      const match = streams.find(s => s.id === streamId);
+      if (match) {
+        setActiveStream(match);
+        return;
+      }
+    }
+
+    if (!activeStream) {
       setActiveStream(streams[0]);
     }
-  }, [streams, activeStream]);
+  }, [streams, location.search, activeStream]);
 
-  // Reset local user engagement when stream changes
-  useEffect(() => {
-    if (activeStream) {
-      setViewers(activeStream.islive ? 1000 + Math.floor(Math.random() * 500) : 0);
-      setLikes(2000 + Math.floor(Math.random() * 3000));
-      setHasLiked(false);
+  const loadEngagement = useCallback(async (streamId) => {
+    setEngagementLoading(true);
+    try {
+      const data = await streamService.getEngagement(streamId, visitorIdRef.current);
+      setLikes(data.likeCount);
+      setShares(data.shareCount);
+      setViewers(data.viewerCount);
+      setHasLiked(data.hasLiked);
+    } catch (e) {
+      console.error('Failed to load engagement:', e);
+    } finally {
+      setEngagementLoading(false);
     }
-  }, [activeStream]);
-
-  // Initial chat setup
-  useEffect(() => {
-    const initial = [
-      { id: 'sys-1', username: 'SYSTEM', text: 'Secured channel established. Enforced protocol active.', timestamp: Date.now() - 10000, isSystem: true },
-      { id: '1', username: 'Tai_Moderator', text: "Welcome to the elite broadcast. @Guest_Pro ready for action? 🔥", timestamp: Date.now() - 5000, reactions: [{ emoji: '🔥', count: 12 }] },
-    ];
-    setChatMessages(initial);
   }, []);
 
-  // Simulate live audience behavior
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (activeStream?.islive) {
-        setViewers(prev => {
-          const change = Math.floor(Math.random() * 15) - 6;
-          return Math.max(1, prev + change);
-        });
-
-        if (Math.random() > 0.6) {
-          setLikes(prev => prev + Math.floor(Math.random() * 3) + 1);
+  const mergeChatMessages = useCallback((incoming, replace = false) => {
+    setChatMessages(prev => {
+      const base = replace ? [] : prev;
+      const map = new Map(base.map(m => [m.id, m]));
+      for (const msg of incoming) {
+        const existing = map.get(msg.id);
+        if (existing) {
+          map.set(msg.id, { ...existing, reactions: msg.reactions ?? existing.reactions });
+        } else {
+          map.set(msg.id, msg);
         }
       }
+      const merged = Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
+      return merged.length > 100 ? merged.slice(-100) : merged;
+    });
+  }, []);
 
-      const randomUser = MOCK_CHAT_USERS[Math.floor(Math.random() * MOCK_CHAT_USERS.length)];
-      const randomMsgTemplate = MOCK_MESSAGES[Math.floor(Math.random() * MOCK_MESSAGES.length)];
-      
-      const text = Math.random() > 0.85 
-        ? `@${MY_USERNAME} ${randomMsgTemplate}` 
-        : randomMsgTemplate;
+  const loadChat = useCallback(async (streamId, { since = null, replace = false } = {}) => {
+    try {
+      const data = await streamService.getChatMessages(streamId, { since, limit: 50 });
+      if (data.messages?.length) {
+        mergeChatMessages(data.messages, replace);
+        const latest = data.messages[data.messages.length - 1];
+        lastChatTimestampRef.current = new Date(latest.timestamp).toISOString();
+      } else if (replace) {
+        setChatMessages([]);
+        lastChatTimestampRef.current = null;
+      }
+    } catch (e) {
+      console.error('Failed to load chat:', e);
+    }
+  }, [mergeChatMessages]);
 
-      const newMessage = {
-        id: Math.random().toString(36).substr(2, 9),
-        username: randomUser,
-        text: text,
-        timestamp: Date.now(),
-        reactions: Math.random() > 0.7 ? [{ emoji: '🔥', count: Math.floor(Math.random() * 5) + 1 }] : []
-      };
+  useEffect(() => {
+    if (!activeStream?.id) return;
 
-      setChatMessages(prev => {
-        const updated = [...prev, newMessage];
-        return updated.length > 50 ? updated.slice(-50) : updated;
-      });
-    }, 3800);
+    let cancelled = false;
+    lastChatTimestampRef.current = null;
 
-    return () => clearInterval(interval);
-  }, [activeStream]);
+    const init = async () => {
+      setChatLoading(true);
+      setChatError('');
+      await Promise.all([
+        loadEngagement(activeStream.id),
+        loadChat(activeStream.id, { replace: true })
+      ]);
+      if (!cancelled) setChatLoading(false);
+    };
 
-  // INTERNAL CHAT SCROLLING LOGIC
+    init();
+
+    const heartbeat = setInterval(async () => {
+      try {
+        const data = await streamService.sendHeartbeat(activeStream.id, visitorIdRef.current);
+        if (data?.viewerCount != null) setViewers(data.viewerCount);
+      } catch (_) { /* ignore */ }
+    }, VIEWER_HEARTBEAT_MS);
+
+    const pollChat = setInterval(async () => {
+      if (lastChatTimestampRef.current) {
+        await loadChat(activeStream.id, { since: lastChatTimestampRef.current });
+      } else {
+        await loadEngagement(activeStream.id);
+      }
+    }, CHAT_POLL_MS);
+
+    streamService.sendHeartbeat(activeStream.id, visitorIdRef.current)
+      .then(data => { if (data?.viewerCount != null) setViewers(data.viewerCount); })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      clearInterval(heartbeat);
+      clearInterval(pollChat);
+    };
+  }, [activeStream?.id, loadEngagement, loadChat]);
+
   useEffect(() => {
     const container = chatContainerRef.current;
     if (container) {
-      // Check if user is already near the bottom before auto-scrolling
       const isNearBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
       if (isNearBottom) {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'smooth'
-        });
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
       }
     }
   }, [chatMessages]);
 
-  const handleLikeClick = () => {
-    if (!hasLiked) {
-      setLikes(prev => prev + 1);
-      setHasLiked(true);
-      
-      const likeMsg = {
-        id: `like-${Date.now()}`,
-        username: 'SYSTEM',
-        text: 'Tactical appreciation acknowledged. Deployment morale increased.',
-        timestamp: Date.now(),
-        isSystem: true
-      };
-      setChatMessages(prev => [...prev, likeMsg]);
+  const handleLikeClick = async () => {
+    if (!activeStream || likePending) return;
+    setLikePending(true);
+    try {
+      const data = await streamService.likeStream(
+        activeStream.id,
+        visitorIdRef.current,
+        user?.id || null
+      );
+      setLikes(data.likeCount);
+      setHasLiked(data.hasLiked);
+    } catch (e) {
+      console.error('Like failed:', e);
+    } finally {
+      setLikePending(false);
     }
   };
 
-  const handleSendMessage = (e) => {
+  const handleShareClick = async () => {
+    if (!activeStream || sharePending) return;
+    setSharePending(true);
+    setShareFeedback('');
+    try {
+      const method = await streamService.shareStream(activeStream);
+      if (!method) {
+        setSharePending(false);
+        return;
+      }
+      const data = await streamService.recordShare(activeStream.id, visitorIdRef.current, method);
+      setShares(data.shareCount);
+      setShareFeedback(method === 'native' ? 'Shared!' : 'Link copied!');
+      setTimeout(() => setShareFeedback(''), 2500);
+    } catch (e) {
+      console.error('Share failed:', e);
+      setShareFeedback('Share failed');
+      setTimeout(() => setShareFeedback(''), 2500);
+    } finally {
+      setSharePending(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
-    
-    const newMessage = {
-      id: Date.now().toString(),
-      username: MY_USERNAME,
-      text: inputText,
-      timestamp: Date.now(),
-      reactions: []
-    };
-    
-    setChatMessages(prev => [...prev, newMessage]);
+    if (!inputText.trim() || !activeStream) return;
+
+    const text = inputText.trim();
     setInputText('');
+    setChatError('');
 
-    // Force scroll to bottom for user's own message
-    setTimeout(() => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
-    }, 100);
-  };
+    try {
+      const data = await streamService.sendChatMessage(activeStream.id, {
+        visitorId: visitorIdRef.current,
+        username: myUsername,
+        text,
+        userId: user?.id || null
+      });
+      mergeChatMessages([data.message]);
+      lastChatTimestampRef.current = new Date(data.message.timestamp).toISOString();
 
-  const handleReaction = (msgId, emoji) => {
-    setChatMessages(prev => prev.map(msg => {
-      if (msg.id === msgId) {
-        const existingReactions = msg.reactions || [];
-        const rIndex = existingReactions.findIndex(r => r.emoji === emoji);
-        
-        if (rIndex > -1) {
-          const newReactions = [...existingReactions];
-          newReactions[rIndex] = { ...newReactions[rIndex], count: newReactions[rIndex].count + 1 };
-          return { ...msg, reactions: newReactions };
-        } else {
-          return { ...msg, reactions: [...existingReactions, { emoji, count: 1 }] };
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTo({
+            top: chatContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
         }
-      }
-      return msg;
-    }));
+      }, 100);
+    } catch (err) {
+      setChatError(err.message || 'Failed to send message');
+      setInputText(text);
+    }
   };
 
-  const deleteMessage = (msgId) => {
-    setChatMessages(prev => prev.filter(m => m.id !== msgId));
+  const handleReaction = async (msgId, emoji) => {
+    if (!activeStream) return;
+    try {
+      const data = await streamService.addReaction(activeStream.id, msgId, {
+        visitorId: visitorIdRef.current,
+        emoji
+      });
+      setChatMessages(prev => prev.map(msg =>
+        msg.id === msgId ? { ...msg, reactions: data.reactions } : msg
+      ));
+    } catch (e) {
+      console.error('Reaction failed:', e);
+    }
   };
 
-  const clearChat = () => {
-    setChatMessages([{ id: 'sys-clear', username: 'SYSTEM', text: 'Matrix cleared by administrator.', timestamp: Date.now(), isSystem: true }]);
+  const handleQuickReaction = async (msgId) => {
+    await handleReaction(msgId, '🔥');
+  };
+
+  const deleteMessage = async (msgId) => {
+    if (!activeStream || !isAdmin) return;
+    try {
+      await streamService.deleteChatMessage(activeStream.id, msgId);
+      setChatMessages(prev => prev.filter(m => m.id !== msgId));
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
+  };
+
+  const clearChat = async () => {
+    if (!activeStream || !isAdmin) return;
+    try {
+      await streamService.clearChat(activeStream.id);
+      await loadChat(activeStream.id, { replace: true });
+    } catch (e) {
+      console.error('Clear chat failed:', e);
+    }
   };
 
   const renderMessageText = (text) => {
     const parts = text.split(/(@\w+)/g);
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
-        const isMe = part === `@${MY_USERNAME}`;
+        const isMe = part.slice(1).toLowerCase() === myUsername.toLowerCase();
         return (
-          <span 
-            key={i} 
+          <span
+            key={i}
             className={`font-black rounded px-1.5 py-0.5 mx-0.5 text-[10px] ${isMe ? 'bg-primary/20 text-primary border border-primary/30 shadow-[0_0_12px_rgba(0,212,255,0.4)] animate-pulse' : 'bg-accent/10 text-accent'}`}
           >
             {part}
@@ -195,6 +301,11 @@ const StreamsPage = ({ streams }) => {
       }
       return part;
     });
+  };
+
+  const selectStream = (stream) => {
+    setActiveStream(stream);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -208,7 +319,6 @@ const StreamsPage = ({ streams }) => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
 
           <div className="lg:col-span-8 space-y-4 md:space-y-6">
-            {/* Video Player */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-pink/20 to-primary/20 rounded-2xl md:rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
               <div className="relative aspect-video bg-black rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
@@ -249,63 +359,41 @@ const StreamsPage = ({ streams }) => {
               </div>
             </div>
 
-            {/* Stream Info */}
             <div className="glass p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 relative overflow-hidden">
                <div className="flex flex-col gap-4 md:gap-6 mb-6 md:mb-8">
                   <div className="flex-1">
                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="px-2 md:px-3 py-1 bg-primary/10 border border-primary/30 rounded text-primary font-orbitron font-black text-[8px] md:text-[9px] uppercase tracking-widest">COMPETITIVE</span>
-                        <span className="text-gray-500 font-rajdhani font-bold text-[8px] md:text-xs uppercase tracking-widest">• Janakpur Server</span>
+                        {activeStream?.islive && (
+                          <span className="px-2 md:px-3 py-1 bg-red-600/20 border border-red-500/30 rounded text-red-400 font-orbitron font-black text-[8px] md:text-[9px] uppercase tracking-widest">LIVE NOW</span>
+                        )}
                      </div>
                      <h1 className="text-xl sm:text-2xl md:text-4xl font-orbitron font-black text-white uppercase tracking-tight leading-tight break-words">{activeStream?.title || 'BROADCAST OFFLINE'}</h1>
                   </div>
-                  <div className="flex gap-2 md:gap-4 flex-wrap">
+                  <div className="flex gap-2 md:gap-4 flex-wrap items-start">
                      <button
                         onClick={handleLikeClick}
-                        className={`flex flex-col items-center justify-center border rounded-xl md:rounded-2xl w-14 h-14 md:w-20 md:h-20 transition-all group ${hasLiked ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(0,212,255,0.3)]' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                        disabled={likePending || engagementLoading}
+                        className={`flex flex-col items-center justify-center border rounded-xl md:rounded-2xl w-14 h-14 md:w-20 md:h-20 transition-all group disabled:opacity-50 ${hasLiked ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(0,212,255,0.3)]' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
                       >
                         <i className={`fa-solid fa-thumbs-up mb-1 md:mb-2 text-base md:text-xl group-hover:scale-110 transition-transform ${hasLiked ? 'text-primary' : 'text-gray-500'}`}></i>
                         <span className={`text-[8px] md:text-[10px] font-orbitron font-black ${hasLiked ? 'text-primary' : 'text-white'}`}>{likes.toLocaleString()}</span>
                      </button>
-                     <button className="flex flex-col items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl md:rounded-2xl w-14 h-14 md:w-20 md:h-20 transition-all group">
+                     <button
+                        onClick={handleShareClick}
+                        disabled={sharePending || !activeStream}
+                        className="flex flex-col items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl md:rounded-2xl w-14 h-14 md:w-20 md:h-20 transition-all group disabled:opacity-50 relative"
+                      >
                         <i className="fa-solid fa-share-nodes text-accent mb-1 md:mb-2 text-base md:text-xl group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[8px] md:text-[10px] font-orbitron font-black text-white">SHARE</span>
+                        <span className="text-[8px] md:text-[10px] font-orbitron font-black text-white">{shares > 0 ? shares.toLocaleString() : 'SHARE'}</span>
+                        {shareFeedback && (
+                          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[8px] text-primary font-orbitron whitespace-nowrap">{shareFeedback}</span>
+                        )}
                      </button>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 pt-4 md:pt-8 border-t border-white/5">
-                  <div className="flex items-center gap-2 md:gap-4">
-                     <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-primary/20 flex-shrink-0">
-                        <i className="fa-solid fa-crown text-primary text-sm md:text-base"></i>
-                     </div>
-                     <div className="min-w-0">
-                        <div className="text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-widest">TOP DONOR</div>
-                        <div className="text-white font-orbitron font-bold text-[9px] md:text-xs truncate">@Nitro_Blast</div>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 md:gap-4">
-                     <div className="w-10 h-10 md:w-12 md:h-12 bg-pink/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-pink/20 flex-shrink-0">
-                        <i className="fa-solid fa-fire text-pink text-sm md:text-base"></i>
-                     </div>
-                     <div className="min-w-0">
-                        <div className="text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-widest">MATCH GOAL</div>
-                        <div className="text-white font-orbitron font-bold text-[9px] md:text-xs truncate">100 Kills Total</div>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 md:gap-4">
-                     <div className="w-10 h-10 md:w-12 md:h-12 bg-tertiary/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-tertiary/20 flex-shrink-0">
-                        <i className="fa-solid fa-trophy text-tertiary text-sm md:text-base"></i>
-                     </div>
-                     <div className="min-w-0">
-                        <div className="text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-widest">CURRENT BOOYAH</div>
-                        <div className="text-white font-orbitron font-bold text-[9px] md:text-xs truncate">Shadow Knights</div>
-                     </div>
                   </div>
                </div>
             </div>
 
-            {/* Archived Streams */}
             <div className="space-y-3 md:space-y-6">
                <div className="flex justify-between items-center px-2">
                   <h4 className="font-orbitron font-black text-white text-[9px] md:text-xs uppercase tracking-[0.2em] md:tracking-[0.3em] flex items-center gap-3">
@@ -315,7 +403,7 @@ const StreamsPage = ({ streams }) => {
                </div>
                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6">
                   {streams.filter(s => s.id !== activeStream?.id).map(stream => (
-                      <div key={stream.id} className="group cursor-pointer" onClick={() => { setActiveStream(stream); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                      <div key={stream.id} className="group cursor-pointer" onClick={() => selectStream(stream)}>
                           <div className="relative aspect-video rounded-lg md:rounded-xl overflow-hidden border border-white/5 mb-1.5 md:mb-3">
                               <img src={`https://img.youtube.com/vi/${stream.youtubeid}/hqdefault.jpg`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={stream.title} />
                               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-all flex items-center justify-center">
@@ -326,7 +414,6 @@ const StreamsPage = ({ streams }) => {
                               {stream.islive && (
                                  <span className="absolute top-1 left-1 bg-red-600 text-white text-[6px] md:text-[8px] font-black px-1 md:px-1.5 py-0.5 rounded-full uppercase tracking-widest border border-white/10">LIVE</span>
                               )}
-                              <span className="absolute bottom-1 right-1 bg-black/60 backdrop-blur-md text-white text-[6px] md:text-[8px] font-black px-1 md:px-1.5 py-0.5 rounded uppercase tracking-widest border border-white/10">10:45</span>
                           </div>
                           <h4 className="text-white font-orbitron font-bold text-[8px] md:text-[11px] line-clamp-1 group-hover:text-primary transition-colors leading-snug">{stream.title}</h4>
                       </div>
@@ -335,13 +422,13 @@ const StreamsPage = ({ streams }) => {
             </div>
           </div>
 
-          {/* Chat Section */}
           <div className="lg:col-span-4 lg:sticky lg:top-28 h-[400px] sm:h-[500px] md:h-[600px] lg:h-[calc(100vh-180px)]">
             <div className="glass rounded-2xl md:rounded-3xl border border-white/5 flex flex-col shadow-2xl relative overflow-hidden h-full">
               <div className="p-3 md:p-5 border-b border-white/5 flex items-center justify-between bg-white/2 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
                     <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_#00d4ff]"></div>
                     <h3 className="text-primary font-orbitron font-black uppercase tracking-widest text-[8px] md:text-[10px] truncate">Neural Feed</h3>
+                    <span className="text-[7px] text-gray-600 font-mono truncate">as {myUsername}</span>
                 </div>
                 {isAdmin && (
                   <button onClick={clearChat} className="text-[7px] md:text-[8px] font-orbitron font-black text-pink hover:text-white transition-all flex items-center gap-1.5 md:gap-2 uppercase tracking-widest border border-pink/30 px-2 md:px-3 py-1 rounded-full hover:bg-pink/10 flex-shrink-0">
@@ -357,23 +444,47 @@ const StreamsPage = ({ streams }) => {
               >
                 <div className="sticky top-0 left-0 w-full h-8 bg-gradient-to-b from-bg-dark/20 to-transparent pointer-events-none z-10 -mt-5"></div>
 
+                {chatLoading && chatMessages.length === 0 && (
+                  <div className="text-center py-8 text-gray-600 font-orbitron text-[9px] uppercase tracking-widest animate-pulse">
+                    Syncing feed...
+                  </div>
+                )}
+
+                {!chatLoading && chatMessages.length === 0 && (
+                  <div className="text-center py-8 px-4">
+                    <p className="text-primary/60 font-orbitron text-[9px] uppercase tracking-widest mb-2">Channel Secured</p>
+                    <p className="text-gray-600 font-rajdhani text-xs">Be the first to transmit intel in this sector.</p>
+                  </div>
+                )}
+
                 {chatMessages.map(msg => (
                   <div key={msg.id} className={`flex flex-col group animate-slide-up ${msg.isSystem ? 'items-center text-center' : ''}`}>
                     {!msg.isSystem && (
                       <div className="flex items-center justify-between mb-1 md:mb-1.5">
                         <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-                            <span className={`font-orbitron font-black text-[8px] md:text-[9px] uppercase tracking-widest truncate ${msg.username === MY_USERNAME ? 'text-primary' : 'text-gray-500'}`}>
+                            <span className={`font-orbitron font-black text-[8px] md:text-[9px] uppercase tracking-widest truncate ${msg.username === myUsername ? 'text-primary' : 'text-gray-500'}`}>
                                 {msg.username}
                             </span>
                             <span className="text-[6px] md:text-[7px] text-gray-700 font-mono italic flex-shrink-0">
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
-                        {isAdmin && (
-                          <button onClick={() => deleteMessage(msg.id)} className="opacity-0 group-hover:opacity-100 text-pink hover:scale-125 transition-all p-1 flex-shrink-0">
-                             <i className="fa-solid fa-trash-can text-[8px]"></i>
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {!msg.isSystem && (
+                            <button
+                              onClick={() => handleQuickReaction(msg.id)}
+                              className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-primary transition-all p-1 flex-shrink-0"
+                              title="React"
+                            >
+                              <i className="fa-solid fa-fire text-[8px]"></i>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button onClick={() => deleteMessage(msg.id)} className="opacity-0 group-hover:opacity-100 text-pink hover:scale-125 transition-all p-1 flex-shrink-0">
+                               <i className="fa-solid fa-trash-can text-[8px]"></i>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -381,7 +492,7 @@ const StreamsPage = ({ streams }) => {
                        <div className={`px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-2xl font-rajdhani text-xs md:text-sm break-words transition-all ${
                           msg.isSystem
                             ? 'bg-primary/5 border border-primary/10 text-primary/60 italic text-[8px] md:text-[10px] uppercase tracking-widest'
-                            : msg.username === MY_USERNAME
+                            : msg.username === myUsername
                                 ? 'bg-primary/10 border border-primary/20 text-white rounded-tr-none shadow-[0_4px_15px_rgba(0,212,255,0.1)]'
                                 : 'bg-white/5 border border-white/5 text-gray-300 rounded-tl-none'
                         }`}>
@@ -400,6 +511,17 @@ const StreamsPage = ({ streams }) => {
                                 <span className="font-bold text-gray-500 group-hover:text-primary">{r.count}</span>
                               </button>
                             ))}
+                            <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 transition-opacity">
+                              {REACTION_EMOJIS.filter(e => !msg.reactions?.some(r => r.emoji === e)).slice(0, 3).map(emoji => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => handleReaction(msg.id, emoji)}
+                                  className="text-[10px] hover:scale-125 transition-transform px-1"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
                          </div>
                        )}
                     </div>
@@ -410,19 +532,23 @@ const StreamsPage = ({ streams }) => {
               </div>
 
               <div className="p-3 md:p-5 bg-white/2 border-t border-white/5 backdrop-blur-xl shrink-0">
+                {chatError && (
+                  <p className="text-pink text-[9px] font-orbitron mb-2 uppercase tracking-wider">{chatError}</p>
+                )}
                 <form onSubmit={handleSendMessage} className="space-y-2 md:space-y-4">
                   <div className="relative">
                     <input
                       type="text"
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
+                      maxLength={500}
                       placeholder="Input Sector Intel..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl px-3 md:px-5 py-2.5 md:py-4 text-white font-rajdhani text-xs md:text-sm focus:border-primary focus:bg-primary/5 outline-none transition-all placeholder:text-gray-700 shadow-inner"
                     />
                   </div>
                   <button
                     type="submit"
-                    disabled={!inputText.trim()}
+                    disabled={!inputText.trim() || !activeStream}
                     className="w-full bg-primary text-dark font-orbitron font-black py-2.5 md:py-4 rounded-xl md:rounded-2xl hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-30 disabled:hover:shadow-none transition-all uppercase tracking-[0.2em] text-[8px] md:text-[10px] cyber-button flex items-center justify-center gap-2"
                   >
                     TRANSMIT <i className="fa-solid fa-paper-plane text-xs hidden sm:inline"></i>

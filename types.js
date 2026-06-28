@@ -115,6 +115,9 @@ export const StreamHighlight = {};
  * @property {string} title
  * @property {string} youtubeid
  * @property {boolean} islive
+ * @property {number} [like_count]
+ * @property {number} [share_count]
+ * @property {number} [viewer_count]
  */
 export const StreamVideo = {};
 

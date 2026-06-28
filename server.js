@@ -237,6 +237,95 @@ const partnerSubmissionLimiter = rateLimit({
   legacyHeaders: false
 });
 
+const streamChatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const streamEngagementLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const ALLOWED_CHAT_EMOJIS = new Set(['🔥', '👍', '❤️', '😂', '👏', '🎉']);
+const VIEWER_ACTIVE_SECONDS = 90;
+
+function isValidVisitorId(id) {
+  if (!id || typeof id !== 'string') return false;
+  const trimmed = id.trim();
+  return trimmed.length >= 8 && trimmed.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(trimmed);
+}
+
+function requireSimpleAdmin(req, res, next) {
+  const adminPass = process.env.ADMIN_PASSWORD;
+  const key = (req.headers['x-admin-key'] || '').toString();
+  if (!adminPass || !key) return safeError(res, 403, 'Forbidden');
+
+  const a = Buffer.from(key);
+  const b = Buffer.from(adminPass);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return safeError(res, 403, 'Forbidden');
+  }
+  return next();
+}
+
+async function refreshStreamViewerCount(streamId) {
+  const cutoff = new Date(Date.now() - VIEWER_ACTIVE_SECONDS * 1000).toISOString();
+  const { count, error: countErr } = await supabase
+    .from('stream_viewers')
+    .select('*', { count: 'exact', head: true })
+    .eq('stream_id', streamId)
+    .gte('last_seen_at', cutoff);
+
+  if (countErr) throw countErr;
+
+  const viewerCount = count || 0;
+  const { error: updateErr } = await supabase
+    .from('streams')
+    .update({ viewer_count: viewerCount })
+    .eq('id', streamId);
+
+  if (updateErr) throw updateErr;
+  return viewerCount;
+}
+
+async function aggregateReactions(messageIds) {
+  if (!messageIds.length) return {};
+  const { data, error } = await supabase
+    .from('stream_chat_reactions')
+    .select('message_id, emoji')
+    .in('message_id', messageIds);
+
+  if (error) throw error;
+
+  const grouped = {};
+  for (const row of data || []) {
+    if (!grouped[row.message_id]) grouped[row.message_id] = {};
+    grouped[row.message_id][row.emoji] = (grouped[row.message_id][row.emoji] || 0) + 1;
+  }
+
+  const result = {};
+  for (const [messageId, emojis] of Object.entries(grouped)) {
+    result[messageId] = Object.entries(emojis).map(([emoji, count]) => ({ emoji, count }));
+  }
+  return result;
+}
+
+function mapChatMessage(row, reactions = []) {
+  return {
+    id: row.id,
+    username: row.username,
+    text: row.message_text,
+    timestamp: new Date(row.created_at).getTime(),
+    isSystem: row.is_system,
+    reactions
+  };
+}
+
 
 
 
@@ -492,6 +581,325 @@ app.get('/api/streams', async (req, res) => {
   } catch (error) {
     console.error('Error fetching streams:', error);
     res.status(500).json({ error: 'Failed to fetch streams' });
+  }
+});
+
+// ================================================================
+// STREAM ENGAGEMENT (likes, shares, viewers, live chat)
+// ================================================================
+
+app.get('/api/streams/:id/engagement', streamEngagementLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const visitorId = (req.query.visitorId || '').toString();
+
+    const { data: stream, error } = await supabase
+      .from('streams')
+      .select('id, like_count, share_count, viewer_count')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) return safeError(res, 500, 'Failed to fetch engagement');
+    if (!stream) return safeError(res, 404, 'Stream not found');
+
+    let hasLiked = false;
+    if (isValidVisitorId(visitorId)) {
+      const { data: likeRow } = await supabase
+        .from('stream_likes')
+        .select('id')
+        .eq('stream_id', id)
+        .eq('visitor_id', visitorId)
+        .maybeSingle();
+      hasLiked = !!likeRow;
+    }
+
+    res.json({
+      likeCount: Number(stream.like_count) || 0,
+      shareCount: Number(stream.share_count) || 0,
+      viewerCount: Number(stream.viewer_count) || 0,
+      hasLiked
+    });
+  } catch (error) {
+    console.error('Error fetching stream engagement:', error);
+    safeError(res, 500, 'Failed to fetch engagement');
+  }
+});
+
+app.post('/api/streams/:id/like', streamEngagementLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const visitorId = (req.body?.visitorId || '').toString().trim();
+    const userId = req.body?.userId || null;
+
+    if (!isValidVisitorId(visitorId)) {
+      return safeError(res, 400, 'Invalid visitor id');
+    }
+
+    const { data: stream } = await supabase.from('streams').select('id').eq('id', id).maybeSingle();
+    if (!stream) return safeError(res, 404, 'Stream not found');
+
+    const { data: existing } = await supabase
+      .from('stream_likes')
+      .select('id')
+      .eq('stream_id', id)
+      .eq('visitor_id', visitorId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error: delErr } = await supabase.from('stream_likes').delete().eq('id', existing.id);
+      if (delErr) return safeError(res, 500, 'Failed to update like');
+    } else {
+      const { error: insErr } = await supabase.from('stream_likes').insert([{
+        stream_id: id,
+        visitor_id: visitorId,
+        user_id: userId
+      }]);
+      if (insErr) return safeError(res, 500, 'Failed to like stream');
+    }
+
+    const { data: updated } = await supabase
+      .from('streams')
+      .select('like_count')
+      .eq('id', id)
+      .maybeSingle();
+
+    res.json({
+      likeCount: Number(updated?.like_count) || 0,
+      hasLiked: !existing
+    });
+  } catch (error) {
+    console.error('Error liking stream:', error);
+    safeError(res, 500, 'Failed to like stream');
+  }
+});
+
+app.post('/api/streams/:id/share', streamEngagementLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const visitorId = (req.body?.visitorId || '').toString().trim();
+    const method = sanitizeText(req.body?.method || 'link').slice(0, 32) || 'link';
+
+    if (!isValidVisitorId(visitorId)) {
+      return safeError(res, 400, 'Invalid visitor id');
+    }
+
+    const { data: stream } = await supabase.from('streams').select('id').eq('id', id).maybeSingle();
+    if (!stream) return safeError(res, 404, 'Stream not found');
+
+    const { error: insErr } = await supabase.from('stream_shares').insert([{
+      stream_id: id,
+      visitor_id: visitorId,
+      share_method: method
+    }]);
+    if (insErr) return safeError(res, 500, 'Failed to record share');
+
+    const { data: updated } = await supabase
+      .from('streams')
+      .select('share_count')
+      .eq('id', id)
+      .maybeSingle();
+
+    res.json({ shareCount: Number(updated?.share_count) || 0 });
+  } catch (error) {
+    console.error('Error recording share:', error);
+    safeError(res, 500, 'Failed to record share');
+  }
+});
+
+app.post('/api/streams/:id/viewers/heartbeat', streamEngagementLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const visitorId = (req.body?.visitorId || '').toString().trim();
+
+    if (!isValidVisitorId(visitorId)) {
+      return safeError(res, 400, 'Invalid visitor id');
+    }
+
+    const { data: stream } = await supabase.from('streams').select('id').eq('id', id).maybeSingle();
+    if (!stream) return safeError(res, 404, 'Stream not found');
+
+    const now = new Date().toISOString();
+    const { error: upsertErr } = await supabase
+      .from('stream_viewers')
+      .upsert([{ stream_id: id, visitor_id: visitorId, last_seen_at: now }], {
+        onConflict: 'stream_id,visitor_id'
+      });
+
+    if (upsertErr) return safeError(res, 500, 'Failed to update viewer');
+
+    const viewerCount = await refreshStreamViewerCount(id);
+    res.json({ viewerCount });
+  } catch (error) {
+    console.error('Error updating viewer heartbeat:', error);
+    safeError(res, 500, 'Failed to update viewer');
+  }
+});
+
+app.get('/api/streams/:id/chat', streamEngagementLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+    const since = req.query.since ? new Date(req.query.since).toISOString() : null;
+
+    let rows;
+    if (since && !Number.isNaN(new Date(since).getTime())) {
+      const { data, error } = await supabase
+        .from('stream_chat_messages')
+        .select('id, stream_id, visitor_id, user_id, username, message_text, is_system, created_at')
+        .eq('stream_id', id)
+        .eq('is_deleted', false)
+        .gt('created_at', since)
+        .order('created_at', { ascending: true })
+        .limit(limit);
+      if (error) return safeError(res, 500, 'Failed to fetch chat');
+      rows = data || [];
+    } else {
+      const { data, error } = await supabase
+        .from('stream_chat_messages')
+        .select('id, stream_id, visitor_id, user_id, username, message_text, is_system, created_at')
+        .eq('stream_id', id)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) return safeError(res, 500, 'Failed to fetch chat');
+      rows = (data || []).reverse();
+    }
+
+    const messageIds = rows.map(r => r.id);
+    const reactionMap = await aggregateReactions(messageIds);
+    const messages = rows.map(row => mapChatMessage(row, reactionMap[row.id] || []));
+
+    res.json({ messages });
+  } catch (error) {
+    console.error('Error fetching chat:', error);
+    safeError(res, 500, 'Failed to fetch chat');
+  }
+});
+
+app.post('/api/streams/:id/chat', streamChatLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const visitorId = (req.body?.visitorId || '').toString().trim();
+    const userId = req.body?.userId || null;
+    const username = sanitizeText(req.body?.username || '').slice(0, 32);
+    const text = sanitizeText(req.body?.text || '').slice(0, 500);
+
+    if (!isValidVisitorId(visitorId)) return safeError(res, 400, 'Invalid visitor id');
+    if (!username) return safeError(res, 400, 'Username required');
+    if (!text) return safeError(res, 400, 'Message required');
+
+    const { data: stream } = await supabase.from('streams').select('id').eq('id', id).maybeSingle();
+    if (!stream) return safeError(res, 404, 'Stream not found');
+
+    const { data: inserted, error } = await supabase
+      .from('stream_chat_messages')
+      .insert([{
+        stream_id: id,
+        visitor_id: visitorId,
+        user_id: userId,
+        username,
+        message_text: text,
+        is_system: false
+      }])
+      .select('id, stream_id, visitor_id, user_id, username, message_text, is_system, created_at')
+      .single();
+
+    if (error) return safeError(res, 500, 'Failed to send message');
+
+    res.status(201).json({ message: mapChatMessage(inserted, []) });
+  } catch (error) {
+    console.error('Error sending chat message:', error);
+    safeError(res, 500, 'Failed to send message');
+  }
+});
+
+app.post('/api/streams/:id/chat/:messageId/reactions', streamEngagementLimiter, async (req, res) => {
+  try {
+    const { id, messageId } = req.params;
+    const visitorId = (req.body?.visitorId || '').toString().trim();
+    const emoji = (req.body?.emoji || '').toString();
+
+    if (!isValidVisitorId(visitorId)) return safeError(res, 400, 'Invalid visitor id');
+    if (!ALLOWED_CHAT_EMOJIS.has(emoji)) return safeError(res, 400, 'Invalid emoji');
+
+    const { data: message } = await supabase
+      .from('stream_chat_messages')
+      .select('id')
+      .eq('id', messageId)
+      .eq('stream_id', id)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    if (!message) return safeError(res, 404, 'Message not found');
+
+    const { data: existing } = await supabase
+      .from('stream_chat_reactions')
+      .select('id')
+      .eq('message_id', messageId)
+      .eq('visitor_id', visitorId)
+      .eq('emoji', emoji)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('stream_chat_reactions').delete().eq('id', existing.id);
+    } else {
+      const { error: insErr } = await supabase.from('stream_chat_reactions').insert([{
+        message_id: messageId,
+        visitor_id: visitorId,
+        emoji
+      }]);
+      if (insErr) return safeError(res, 500, 'Failed to add reaction');
+    }
+
+    const reactionMap = await aggregateReactions([messageId]);
+    res.json({ reactions: reactionMap[messageId] || [] });
+  } catch (error) {
+    console.error('Error updating reaction:', error);
+    safeError(res, 500, 'Failed to update reaction');
+  }
+});
+
+app.delete('/api/streams/:id/chat/:messageId', requireSimpleAdmin, async (req, res) => {
+  try {
+    const { id, messageId } = req.params;
+
+    const { error } = await supabase
+      .from('stream_chat_messages')
+      .update({ is_deleted: true })
+      .eq('id', messageId)
+      .eq('stream_id', id);
+
+    if (error) return safeError(res, 500, 'Failed to delete message');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting chat message:', error);
+    safeError(res, 500, 'Failed to delete message');
+  }
+});
+
+app.delete('/api/streams/:id/chat', requireSimpleAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('stream_chat_messages')
+      .update({ is_deleted: true })
+      .eq('stream_id', id)
+      .eq('is_deleted', false);
+
+    if (error) return safeError(res, 500, 'Failed to clear chat');
+
+    await supabase.from('stream_chat_messages').insert([{
+      stream_id: id,
+      username: 'SYSTEM',
+      message_text: 'Matrix cleared by administrator.',
+      is_system: true
+    }]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing chat:', error);
+    safeError(res, 500, 'Failed to clear chat');
   }
 });
 
