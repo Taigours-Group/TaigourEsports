@@ -80,7 +80,7 @@ const HomePage = ({ tournaments, leaderboard, registrations }) => {
             </h1>
 
             <p className="text-gray-400 font-inter text-lg sm:text-xl md:text-2xl mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-light">
-              Nepal’s competitive mobile esports platform.
+              From Local Legends to National Champions.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
