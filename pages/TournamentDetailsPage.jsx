@@ -47,6 +47,7 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [queueStatus, setQueueStatus] = useState(null);
 
   const touchStart = useRef(null);
   const touchEnd = useRef(null);
@@ -80,6 +81,8 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
     if (!canRegister || isSubmitting) return;
 
     setIsSubmitting(true);
+    setQueueStatus({ status: 'uploading', message: 'Encrypting and uploading dossiers...' });
+    
     try {
       // 1. Upload files if provided
       let teamLogoUrl = null;
@@ -99,7 +102,9 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
         };
       }));
 
-      // 2. Submit to API
+      setQueueStatus({ status: 'queuing', message: 'Entering secure registration queue...' });
+
+      // 2. Submit to Queue API
       const response = await fetch('/api/team-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,32 +120,66 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
         })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        onRegister();
-        setRegistrationSuccess(true);
-        setShowToast(true);
-
-        setTimeout(() => {
-          setShowToast(false);
-          closeModals();
-        }, 2000);
-      } else {
+      if (!response.ok) {
         const error = await response.json();
-        alert(`Registration failed: ${error.error}`);
+        throw new Error(error.error || 'Failed to enter queue');
       }
+
+      const { ticket_id } = await response.json();
+
+      // 3. Poll for Status
+      setQueueStatus({ status: 'queued', message: 'Awaiting deployment clearance...' });
+      
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/registration-status/${ticket_id}`);
+          if (!statusRes.ok) return; // Keep trying on network blips
+          
+          const statusData = await statusRes.json();
+          
+          if (statusData.status === 'processing') {
+            setQueueStatus({ status: 'processing', message: 'Finalizing registration...' });
+          } else if (statusData.status === 'success') {
+            clearInterval(pollInterval);
+            onRegister();
+            setRegistrationSuccess(true);
+            setQueueStatus(null);
+            setShowToast(true);
+            setTimeout(() => {
+              setShowToast(false);
+              closeModals();
+            }, 3000);
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollInterval);
+            throw new Error(statusData.error || 'Registration failed during processing');
+          }
+        } catch (pollErr) {
+          console.error('Polling error:', pollErr);
+          // Keep polling on transient errors, let the user cancel if needed
+        }
+      }, 1500); // Check every 1.5s
+      
+      // Store interval ID in a ref to clean up if modal is closed early
+      if (!window.pollIntervals) window.pollIntervals = [];
+      window.pollIntervals.push(pollInterval);
+
     } catch (error) {
       console.error('Registration failed:', error);
-      alert('Registration failed. Please try again.');
-    } finally {
+      alert(`Registration error: ${error.message}`);
       setIsSubmitting(false);
+      setQueueStatus(null);
     }
   };
 
   const closeModals = () => {
+    if (window.pollIntervals) {
+      window.pollIntervals.forEach(clearInterval);
+      window.pollIntervals = [];
+    }
     setShowRegModal(false);
     setRegistrationSuccess(false);
     setIsSubmitting(false);
+    setQueueStatus(null);
   };
 
   const handleModalTouchStart = (e) => {
@@ -424,7 +463,21 @@ const TournamentDetailsPage = ({ tournaments, onRegister, registrations }) => {
               <i className="fas fa-times text-xl md:text-2xl"></i>
             </button>
 
-            {!registrationSuccess ? (
+            {queueStatus ? (
+              <div className="text-center py-12 animate-fade-in">
+                <div className="relative w-20 h-20 mx-auto mb-8">
+                  <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <i className="fas fa-satellite-dish text-primary text-xl animate-pulse"></i>
+                  </div>
+                </div>
+                <h3 className="text-xl md:text-2xl font-orbitron font-black text-white uppercase tracking-widest mb-3">
+                  {queueStatus.status === 'uploading' ? 'UPLOADING DATA' : queueStatus.status === 'processing' ? 'PROCESSING' : 'IN QUEUE'}
+                </h3>
+                <p className="text-gray-400 font-rajdhani text-lg animate-pulse">{queueStatus.message}</p>
+              </div>
+            ) : !registrationSuccess ? (
               <TeamRegistrationForm 
                 tournament={tournament}
                 onSubmit={handleRegistrationSubmit}

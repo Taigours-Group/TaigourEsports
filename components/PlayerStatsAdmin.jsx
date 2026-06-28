@@ -373,8 +373,8 @@ const PlayerStatsAdmin = ({ registrations }) => {
 
       {/* Edit Modal */}
       {editingPlayer && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-bg-card border border-white/10 rounded-2xl p-6 max-w-4xl w-full my-8">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000]">
+          <div className="relative w-full h-[90vh] max-w-4xl p-4 bg-bg-card rounded-2xl border border-white/10 shadow-2xl animate-fade-in my-8 overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-orbitron font-black text-white">
                 Edit Player: {tempProfile.full_name || 'Unknown'}
@@ -416,7 +416,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary"
                   >
                     {Object.entries(MEMBERSHIP_BENEFITS).map(([key, value]) => (
-                      <option key={key} value={key}>
+                      <option className='bg-black' key={key} value={key}>
                         {value.name}
                       </option>
                     ))}
@@ -462,15 +462,15 @@ const PlayerStatsAdmin = ({ registrations }) => {
                     onChange={(e) => setTempProfile({...tempProfile, rank: e.target.value})}
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary"
                   >
-                    <option value="Unranked">Unranked</option>
-                    <option value="Bronze">Bronze</option>
-                    <option value="Silver">Silver</option>
-                    <option value="Gold">Gold</option>
-                    <option value="Platinum">Platinum</option>
-                    <option value="Diamond">Diamond</option>
-                    <option value="Crown">Crown</option>
-                    <option value="Ace">Ace</option>
-                    <option value="Conqueror">Conqueror</option>
+                    <option className='bg-black' value="Unranked">Unranked</option>
+                    <option className='bg-black' value="Bronze">Bronze</option>
+                    <option className='bg-black' value="Silver">Silver</option>
+                    <option className='bg-black' value="Gold">Gold</option>
+                    <option className='bg-black' value="Platinum">Platinum</option>
+                    <option className='bg-black' value="Diamond">Diamond</option>
+                    <option className='bg-black' value="Crown">Crown</option>
+                    <option className='bg-black' value="Ace">Ace</option>
+                    <option className='bg-black' value="Conqueror">Conqueror</option>
                   </select>
                 </div>
               </div>

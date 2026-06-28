@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useMemo, lazy, Suspense, useEffect } from 'react';
 
 // Lazy-load AdminRequestsPanel at module level (not inside a render function)
 const AdminRequestsPanel = lazy(() => import('./AdminRequestsPanel'));
@@ -20,6 +20,76 @@ const AdminPanel = ({
   const [viewingReg, setViewingReg] = useState(null);
   const [whatsAppSentMap, setWhatsAppSentMap] = useState({});
   const [isRefreshingRegistrations, setIsRefreshingRegistrations] = useState(false);
+  const [teamPlayers, setTeamPlayers] = useState([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [editRegForm, setEditRegForm] = useState({});
+  const [savingReg, setSavingReg] = useState(false);
+
+  useEffect(() => {
+    if (viewingReg && viewingReg.id) {
+      setEditRegForm({
+        team_name: viewingReg.team_name || '',
+        team_tag: viewingReg.team_tag || '',
+        manager_name: viewingReg.manager_name || '',
+        manager_contact: viewingReg.manager_contact || viewingReg.playercontact || '',
+        registrar_email: viewingReg.registrar_email || viewingReg.playeremail || '',
+        registration_status: viewingReg.registration_status || 'pending',
+        payment_status: viewingReg.payment_status || 'pending',
+        notes: viewingReg.notes || '',
+      });
+      setLoadingPlayers(true);
+      fetch(`/api/team-registration/${viewingReg.id}/players`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.players) setTeamPlayers(data.players);
+          else setTeamPlayers([]);
+        })
+        .catch(err => {
+          console.error("Error fetching players", err);
+          setTeamPlayers([]);
+        })
+        .finally(() => setLoadingPlayers(false));
+    } else {
+      setTeamPlayers([]);
+      setEditRegForm({});
+    }
+  }, [viewingReg]);
+
+  const saveRegistrationChanges = async () => {
+    if (!viewingReg?.id) return;
+    setSavingReg(true);
+    try {
+      const response = await fetch(`/api/admin/registrations/${viewingReg.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_name: editRegForm.team_name || undefined,
+          team_tag: editRegForm.team_tag || undefined,
+          manager_name: editRegForm.manager_name || undefined,
+          manager_contact: editRegForm.manager_contact || undefined,
+          registrar_email: editRegForm.registrar_email || undefined,
+          registration_status: editRegForm.registration_status,
+          payment_status: editRegForm.payment_status,
+          notes: editRegForm.notes || '',
+          updated_at: new Date().toISOString()
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to save');
+      }
+      const result = await response.json();
+      const saved = result.data || { ...viewingReg, ...editRegForm };
+      await saveRegistrations(registrations.map(r => r.id === viewingReg.id ? saved : r));
+      setViewingReg(null);
+      alert('Registration updated successfully!');
+    } catch (error) {
+      console.error('Save registration failed:', error);
+      alert('Failed to update registration: ' + error.message);
+    } finally {
+      setSavingReg(false);
+    }
+  };
 
   // Initial States for New Records
   const initialTournament = {
@@ -332,7 +402,7 @@ const AdminPanel = ({
   };
 
   const sendRegistrationWhatsApp = async (registration) => {
-    const rawContact = registration?.playercontact || '';
+    const rawContact = registration?.manager_contact || '';
     const sanitizedNumber = rawContact.replace(/\D/g, '');
 
     if (!sanitizedNumber) {
@@ -348,7 +418,7 @@ const AdminPanel = ({
       ? ` Tournament date: ${tournamentDate}${tournamentTime ? ` at ${tournamentTime}` : ''}.`
       : '';
 
-    const message = `Hello ${registration.playername}, your registration is successful for ${tournamentName}. Your UID is ${registration.gameuid}.${dateLine} Welcome to Taigour E-Sports!`;
+    const message = `Hello ${registration.manager_name}, your registration is successful for ${tournamentName}. Your UID is ${registration.gameuid}.${dateLine} Welcome to Taigour E-Sports!`;
     const encodedMessage = encodeURIComponent(message);
     const webWhatsAppUrl = `https://web.whatsapp.com/send?phone=${sanitizedNumber}&text=${encodedMessage}`;
     const mobileWhatsAppUrl = `https://wa.me/${sanitizedNumber}?text=${encodedMessage}`;
@@ -1153,98 +1223,158 @@ const AdminPanel = ({
         </div>
       </div>
 
-      {/* Viewing Registration Modal */}
+      {/* Registration Edit Panel */}
       {viewingReg && (
-        <div className="fixed inset-0 z-[2000] flex items-start justify-center p-4 overflow-y-auto">
-          <div className="absolute inset-0 bg-bg-dark/90 backdrop-blur-md" onClick={() => setViewingReg(null)}></div>
-          <div className="relative w-full max-w-lg bg-bg-card p-6 md:p-12 rounded-2xl border border-primary/30 shadow-[0_0_50px_rgba(0,212,255,0.2)] animate-fade-in my-8">
-            <button onClick={() => setViewingReg(null)} className="absolute top-4 md:top-6 right-4 md:right-6 text-gray-500 hover:text-white transition-colors">
-              <i className="fa-solid fa-xmark text-lg md:text-xl"></i>
-            </button>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-2 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setViewingReg(null)}></div>
+          <div className="relative w-full max-w-4xl bg-bg-card rounded-2xl border border-white/10 shadow-2xl animate-fade-in my-8">
 
-            <div className="text-center mb-8 md:mb-10">
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <i className="fa-solid fa-user-ninja text-2xl md:text-3xl text-primary"></i>
-              </div>
-              <h2 className="text-xl md:text-2xl font-orbitron font-black text-white uppercase tracking-tight">Personnel <span className="text-primary">Dossier</span></h2>
-              <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Classification: Confidential</p>
-            </div>
-
-            <div className="space-y-4 md:space-y-6 font-rajdhani">
-              <div className="grid grid-cols-2 gap-4 md:gap-6">
-                <div className="space-y-1">
-                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Warrior Alias</span>
-                  <span className="text-white text-base md:text-lg font-bold break-words">{viewingReg.playername}</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">System UID</span>
-                  <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.gameuid}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 md:gap-6">
-                <div className="space-y-1">
-                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Player Age</span>
-                  <span className="text-white text-base md:text-lg font-bold">{viewingReg.Player_Age || viewingReg.playerage || 'N/A'}</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[8px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest block">Promo Code</span>
-                  <span className="text-white text-sm md:text-lg font-mono font-bold break-all">{viewingReg.Promo_Code || viewingReg.promo_code || 'N/A'}</span>
-                </div>
-              </div>
-
-              <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Comm-Link</span>
-                  <span className="text-primary font-bold text-sm break-all">{viewingReg.playeremail}</span>
-                </div>
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">WhatsApp Uplink</span>
-                  <span className="text-accent font-bold text-sm break-all">{viewingReg.playercontact}</span>
-                </div>
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">SMS Signal</span>
-                  <span className={`font-bold flex items-center gap-2 ${isSmsSent(viewingReg) ? 'text-[#25D366]' : 'text-yellow-400'}`}>
-                    <i className={`fa-solid ${isSmsSent(viewingReg) ? 'fa-circle-check' : 'fa-signal'}`}></i>
-                    {isSmsSent(viewingReg) ? 'SENT' : 'PENDING'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-3 md:p-4 bg-white/2 border border-white/5 rounded-xl space-y-3 md:space-y-4">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Assigned Arena</span>
-                  <span className="text-white font-bold text-sm break-words">{viewingReg.tournamenttitle}</span>
-                </div>
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                  <span className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Enlistment Date</span>
-                  <span className="text-gray-400 text-sm break-words">{new Date(viewingReg.registrationdate).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 md:mt-10">
-              {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] && (
-                <div className="mb-3 text-[9px] md:text-[10px] text-[#25D366] font-orbitron font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                  <i className="fa-solid fa-circle-check"></i>
-                  MESSAGE MARKED AS SENT
-                </div>
-              )}
-              <div className="flex flex-col gap-3 mb-3">
-                <button
-                  onClick={() => sendRegistrationWhatsApp(viewingReg)}
-                  className={`w-full py-3 md:py-4 text-white font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'bg-[#1daa50]' : 'bg-[#25D366] hover:brightness-110'}`}
-                >
-                  <i className={`${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'fa-solid fa-circle-check' : 'fa-brands fa-whatsapp'} text-base md:text-lg`}></i>
-                  {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'WA SENT' : 'WHATSAPP MSG'}
-                </button>
-              </div>
-              <button
-                onClick={() => setViewingReg(null)}
-                className="w-full py-3 md:py-4 bg-primary text-dark font-orbitron font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-white transition-all"
-              >
-                ACKNOWLEDGE
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b border-white/10">
+              <h3 className="text-xl font-orbitron font-black text-white uppercase tracking-widest">
+                Edit Registration: <span className="text-primary">{viewingReg.team_name || viewingReg.playername || 'Unknown'}</span>
+              </h3>
+              <button onClick={() => setViewingReg(null)} className="text-gray-400 hover:text-white transition-colors">
+                <i className="fa-solid fa-times text-xl"></i>
               </button>
             </div>
+
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+
+              {/* Left Column: Editable Fields */}
+              <div className="space-y-4">
+                <h4 className="text-primary font-orbitron font-bold border-b border-white/10 pb-2 mb-4">
+                  <i className="fa-solid fa-pen-to-square mr-2"></i>Registration Details
+                </h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Team / Squad Name</label>
+                    <input type="text" value={editRegForm.team_name || ''} onChange={(e) => setEditRegForm({...editRegForm, team_name: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Squad Tag</label>
+                    <input type="text" value={editRegForm.team_tag || ''} onChange={(e) => setEditRegForm({...editRegForm, team_tag: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Manager Name</label>
+                    <input type="text" value={editRegForm.manager_name || ''} onChange={(e) => setEditRegForm({...editRegForm, manager_name: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Manager Contact</label>
+                    <input type="text" value={editRegForm.manager_contact || ''} onChange={(e) => setEditRegForm({...editRegForm, manager_contact: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Registrar Email</label>
+                  <input type="email" value={editRegForm.registrar_email || ''} onChange={(e) => setEditRegForm({...editRegForm, registrar_email: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary" />
+                </div>
+
+                <h4 className="text-primary font-orbitron font-bold border-b border-white/10 pb-2 mt-8 mb-4">
+                  <i className="fa-solid fa-sliders mr-2"></i>Status Controls
+                </h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Registration Status</label>
+                    <select value={editRegForm.registration_status || 'pending'} onChange={(e) => setEditRegForm({...editRegForm, registration_status: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary">
+                      <option className='bg-black' value="pending">Pending</option>
+                      <option className='bg-black' value="approved">Approved</option>
+                      <option className='bg-black' value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2">Payment Status</label>
+                    <select value={editRegForm.payment_status || 'pending'} onChange={(e) => setEditRegForm({...editRegForm, payment_status: e.target.value})} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary">
+                      <option className='bg-black' value="pending">Pending</option>
+                      <option className='bg-black' value="completed">Completed</option>
+                      <option className='bg-black' value="failed">Failed</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Admin Notes</label>
+                  <textarea value={editRegForm.notes || ''} onChange={(e) => setEditRegForm({...editRegForm, notes: e.target.value})} rows={3} placeholder="Internal notes about this registration..." className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary resize-none" />
+                </div>
+
+                {/* Read-only Info */}
+                <div className="p-4 bg-white/2 border border-white/5 rounded-xl space-y-2 mt-4">
+                  <div className="flex justify-between text-sm"><span className="text-gray-500 font-bold">Arena</span><span className="text-white font-bold">{viewingReg.tournamenttitle || 'N/A'}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-500 font-bold">Enrolled</span><span className="text-gray-300">{new Date(viewingReg.registrationdate || viewingReg.created_at).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-500 font-bold">SMS</span><span className={`font-bold ${isSmsSent(viewingReg) ? 'text-[#25D366]' : 'text-yellow-400'}`}>{isSmsSent(viewingReg) ? 'SENT' : 'PENDING'}</span></div>
+                </div>
+              </div>
+
+              {/* Right Column: Roster & Actions */}
+              <div className="space-y-4">
+                <h4 className="text-primary font-orbitron font-bold border-b border-white/10 pb-2 mb-4">
+                  <i className="fa-solid fa-users mr-2"></i>Player Roster
+                </h4>
+
+                {viewingReg.team_logo && (
+                  <div className="flex items-center gap-4 p-3 bg-white/2 border border-white/5 rounded-xl mb-4">
+                    <img src={viewingReg.team_logo} alt="Logo" className="w-14 h-14 rounded-lg object-cover border border-primary/30" />
+                    <div>
+                      <div className="text-white font-bold">{viewingReg.team_name}</div>
+                      <div className="text-gray-500 text-xs font-mono">{viewingReg.team_tag}</div>
+                    </div>
+                  </div>
+                )}
+
+                {loadingPlayers ? (
+                  <div className="text-center text-gray-500 py-8"><i className="fa-solid fa-spinner fa-spin mr-2"></i>Loading roster...</div>
+                ) : teamPlayers.length > 0 ? (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {teamPlayers.map((player, idx) => (
+                      <div key={player.id} className="flex justify-between items-center p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">
+                        <div className="min-w-0">
+                          <div className="text-white font-bold text-sm">{idx + 1}. {player.player_name}</div>
+                          <div className="text-gray-500 text-xs font-mono mt-0.5">UID: {player.player_uid}</div>
+                        </div>
+                        {player.player_citizenship_photo && (
+                          <a href={player.player_citizenship_photo} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded text-[9px] font-orbitron font-bold uppercase hover:bg-primary hover:text-dark transition-all flex-shrink-0">
+                            <i className="fa-solid fa-id-card mr-1"></i> Verify ID
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-600 py-8 bg-white/2 rounded-xl border border-white/5">
+                    <i className="fa-solid fa-user-slash text-2xl mb-2 block"></i>
+                    No player roster data
+                  </div>
+                )}
+
+                {/* WhatsApp */}
+                <h4 className="text-primary font-orbitron font-bold border-b border-white/10 pb-2 mt-6 mb-4">
+                  <i className="fa-solid fa-paper-plane mr-2"></i>Communication
+                </h4>
+                <button
+                  onClick={() => sendRegistrationWhatsApp(viewingReg)}
+                  className={`w-full py-3 text-white font-orbitron font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 rounded-lg ${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'bg-[#1daa50]' : 'bg-[#25D366] hover:brightness-110'}`}
+                >
+                  <i className={`${whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'fa-solid fa-circle-check' : 'fa-brands fa-whatsapp'} text-lg`}></i>
+                  {whatsAppSentMap[getRegistrationMessageKey(viewingReg)] ? 'WHATSAPP SENT' : 'SEND WHATSAPP'}
+                </button>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex justify-end gap-3 p-6 border-t border-white/10">
+              <button onClick={() => setViewingReg(null)} className="flex-1 px-4 py-3 bg-white/5 text-white rounded-lg font-orbitron font-bold text-xs uppercase tracking-widest hover:bg-white/10 transition-all">
+                Cancel
+              </button>
+              <button onClick={saveRegistrationChanges} disabled={savingReg} className="flex-1 px-4 py-3 bg-primary text-dark rounded-lg font-orbitron font-bold text-xs uppercase tracking-widest hover:bg-primary/80 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                {savingReg ? <><i className="fa-solid fa-spinner fa-spin"></i> Saving...</> : <><i className="fa-solid fa-floppy-disk"></i> Save Changes</>}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

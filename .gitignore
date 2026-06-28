@@ -20,7 +20,6 @@ dist-ssr/
 .env.test.local
 .env.production.local
 *.sql
-*.md
 
 # Editor directories and files
 .vscode/*

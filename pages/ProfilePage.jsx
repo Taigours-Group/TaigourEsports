@@ -94,7 +94,7 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
   // Get user's registered tournaments (matching email or full name)
   const userEmail = user.email ? user.email.toLowerCase() : '';
   const myRegistrations = (Array.isArray(registrations) ? registrations : []).filter(reg => {
-    return reg.playeremail?.toLowerCase() === userEmail;
+    return (reg.playeremail?.toLowerCase() === userEmail) || (reg.registrar_email?.toLowerCase() === userEmail);
   });
 
   // Calculate stats
@@ -398,6 +398,15 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
                           className="bg-bg-dark border border-white/5 p-4 rounded-xl relative overflow-hidden flex flex-col justify-between group hover:border-primary/20 transition-all duration-300"
                         >
                           <div className="space-y-3">
+                            <div className="absolute top-6 right-6 z-10">
+                              <span className={`px-2 py-1 rounded text-[9px] font-orbitron font-bold uppercase tracking-wider border ${
+                                reg.registration_status === 'approved' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                reg.registration_status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                              }`} style={{ backdropFilter: 'blur(4px)' }}>
+                                {reg.registration_status || 'PENDING'}
+                              </span>
+                            </div>
                             {parentT?.image && (
                               <div className="h-24 w-full rounded-lg overflow-hidden relative">
                                 <img src={parentT.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="scrim" />
@@ -410,10 +419,10 @@ const ProfilePage = ({ tournaments, registrations, leaderboard }) => {
 
                             <div>
                               <h4 className="font-orbitron font-black text-white text-sm uppercase tracking-tight truncate">
-                                {reg.tournamenttitle}
+                                {reg.tournamenttitle || 'Tournament Registration'}
                               </h4>
                               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                                UID: <span className="font-mono text-primary">{reg.gameuid}</span>
+                                UID: <span className="font-mono text-primary">{reg.gameuid || 'TEAM DEPLOYMENT'}</span>
                               </p>
                             </div>
                           </div>

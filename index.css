@@ -89,7 +89,7 @@ h1, h2, h3, h4, h5, h6, .font-space {
   width: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #111827; /* Navy */
+  background: #3e4962; /* Navy */
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {

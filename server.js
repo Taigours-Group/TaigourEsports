@@ -103,6 +103,36 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 app.use(cors());
 
+// Global Rate Limiting
+const globalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/', globalApiLimiter);
+
+// Simple In-Memory Cache
+const cacheMap = new Map();
+function apiCache(durationSec = 60) {
+  return (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    const key = req.originalUrl;
+    const cached = cacheMap.get(key);
+    if (cached && cached.exp > Date.now()) {
+      return res.json(cached.data);
+    }
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        cacheMap.set(key, { data: body, exp: Date.now() + durationSec * 1000 });
+      }
+      return originalJson(body);
+    };
+    next();
+  };
+}
+
 // Security headers (OWASP aligned)
 app.use(helmet({
   contentSecurityPolicy: {
@@ -114,7 +144,7 @@ app.use(helmet({
       styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'", 'https:', 'http:'],
-      frameSrc: ["'none'"],
+      frameSrc: ["'self'", 'https:'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -527,7 +557,7 @@ app.put('/api/purchase-requests/:id/decline', async (req, res) => {
 
 
 // Get all tournaments
-app.get('/api/tournaments', async (req, res) => {
+app.get('/api/tournaments', apiCache(60), async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('tournaments')
@@ -546,7 +576,7 @@ app.get('/api/tournaments', async (req, res) => {
 });
 
 // Get leaderboard
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', apiCache(60), async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('leaderboard')
@@ -566,7 +596,7 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // Get streams
-app.get('/api/streams', async (req, res) => {
+app.get('/api/streams', apiCache(60), async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('streams')
@@ -908,32 +938,33 @@ app.delete('/api/streams/:id/chat', requireSimpleAdmin, async (req, res) => {
 // ================================================================
 
 // Register a team for tournament
-app.post('/api/team-register', async (req, res) => {
+// --- Scalable Registration Queue System ---
+const registrationQueue = [];
+const registrationStatus = new Map();
+
+// Abuse prevention specifically for registration
+const registrationLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  limit: 5, // 5 registrations per IP max
+  message: { error: 'Too many registration requests. Please wait and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+async function processRegistrationQueue() {
+  if (registrationQueue.length === 0) {
+    setTimeout(processRegistrationQueue, 1000);
+    return;
+  }
+  
+  const task = registrationQueue.shift();
+  registrationStatus.set(task.ticket_id, { status: 'processing' });
+  
   try {
     const {
-      tournament_id,
-      team_name,
-      team_tag,
-      team_logo,
-      manager_name,
-      manager_contact,
-      registrar_email,
-      players
-    } = req.body;
-
-    // Validation
-    if (!tournament_id || !team_name || !team_tag || !manager_name || !manager_contact || !registrar_email) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // We will validate the exact required player count after fetching the tournament config
-
-    // Validate all players have required fields
-    for (const player of players) {
-      if (!player.player_name || !player.player_uid || !player.player_citizenship_photo) {
-        return res.status(400).json({ error: 'All player fields are required (name, UID, photo)' });
-      }
-    }
+      tournament_id, team_name, team_tag, team_logo,
+      manager_name, manager_contact, registrar_email, players
+    } = task.payload;
 
     const parseDateAtStartOfDay = (dateValue) => {
       if (!dateValue) return null;
@@ -942,7 +973,6 @@ app.post('/api/team-register', async (req, res) => {
       parsed.setHours(0, 0, 0, 0);
       return parsed;
     };
-
     const parseDateAtEndOfDay = (dateValue) => {
       if (!dateValue) return null;
       const parsed = new Date(dateValue);
@@ -951,80 +981,59 @@ app.post('/api/team-register', async (req, res) => {
       return parsed;
     };
 
-    // Get tournament and validate registration window
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, title, entry_fee, registration_start_date, registration_end_date, login_required, payment_method, team_size')
+      .select('id, title, entry_fee, registration_start_date, registration_end_date, login_required, payment_method, team_size, max_slots')
       .eq('id', tournament_id)
       .single();
 
-    if (tourneyErr || !tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
+    if (tourneyErr || !tournament) throw new Error('Tournament not found');
+
+    // Slot validation
+    const { count: currentRegs, error: countErr } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true })
+      .eq('tournament_id', tournament_id);
+    
+    if (countErr) throw new Error('Database count error');
+    
+    const max_slots = Number(tournament.max_slots) || 48;
+    if (currentRegs >= max_slots) throw new Error('Tournament slots are full');
 
     const requiredTeamSize = tournament.team_size || (tournament.title.toLowerCase().includes('pubg') ? 5 : tournament.title.toLowerCase().includes('free fire') ? 4 : 1);
-    
     if (!Array.isArray(players) || players.length !== requiredTeamSize) {
-      return res.status(400).json({ error: `This tournament strictly requires exactly ${requiredTeamSize} players.` });
+      throw new Error(`This tournament strictly requires exactly ${requiredTeamSize} players.`);
     }
 
     const now = new Date();
     const registrationStart = parseDateAtStartOfDay(tournament.registration_start_date);
     const registrationEnd = parseDateAtEndOfDay(tournament.registration_end_date);
+    if (registrationStart && now < registrationStart) throw new Error(`Registration opens on ${tournament.registration_start_date}.`);
+    if (registrationEnd && now > registrationEnd) throw new Error('Registration has ended.');
 
-    if (registrationStart && now < registrationStart) {
-      return res.status(400).json({
-        error: `Registration has not opened yet. Opens on ${tournament.registration_start_date}.`
-      });
-    }
-
-    if (registrationEnd && now > registrationEnd) {
-      return res.status(400).json({ error: 'Registration has ended for this tournament.' });
-    }
-
-    // Create registration
-    // Generate a unique ID since the registrations table's id column is TEXT
-    // and does not have a DEFAULT gen_random_uuid() auto-generator
     const registrationId = crypto.randomUUID();
     const nowISO = new Date().toISOString();
 
-    // IMPORTANT: The registrations table was repurposed from the old individual
-    // registration schema via ALTER TABLE. The migration added new team columns
-    // but kept legacy columns (tournamenttitle, tournamentid, registrationdate)
-    // which still have NOT NULL constraints. We MUST populate ALL of them.
     const { data: teamReg, error: teamRegErr } = await supabase
       .from('registrations')
       .insert([{
-        // --- ID ---
         id: registrationId,
-        // --- Legacy columns (NOT NULL, kept from old schema) ---
         tournamentid: String(tournament_id),
         tournamenttitle: tournament.title || 'NA',
         registrationdate: nowISO,
-        // --- New team-based columns ---
         tournament_id: String(tournament_id),
-        team_name,
-        team_tag,
-        team_logo: team_logo || null,
-        manager_name,
-        manager_contact,
-        registrar_email,
+        team_name, team_tag, team_logo: team_logo || null,
+        manager_name, manager_contact, registrar_email,
         total_players: players.length,
         payment_method: tournament.payment_method || 'tgc_coin',
         payment_status: 'pending',
         registration_status: 'pending',
-        created_at: nowISO,
-        updated_at: nowISO
+        created_at: nowISO, updated_at: nowISO
       }])
-      .select()
-      .single();
+      .select().single();
 
-    if (teamRegErr) {
-      console.error('Error creating registration:', teamRegErr);
-      return res.status(500).json({ error: 'Failed to create team registration' });
-    }
+    if (teamRegErr) throw new Error('Failed to create team registration');
 
-    // Insert players
     const playerRecords = players.map(p => ({
       team_registration_id: teamReg.id,
       player_name: p.player_name,
@@ -1032,28 +1041,67 @@ app.post('/api/team-register', async (req, res) => {
       player_citizenship_photo: p.player_citizenship_photo
     }));
 
-    const { error: playersErr } = await supabase
-      .from('team_players')
-      .insert(playerRecords);
-
+    const { error: playersErr } = await supabase.from('team_players').insert(playerRecords);
     if (playersErr) {
-      console.error('Error inserting players:', playersErr);
-      // Delete the registration if players insert fails
       await supabase.from('registrations').delete().eq('id', teamReg.id);
-      return res.status(500).json({ error: 'Failed to register players' });
+      throw new Error('Failed to register players');
     }
 
-    res.json({
-      success: true,
+    registrationStatus.set(task.ticket_id, { 
+      status: 'success', 
       registration_id: teamReg.id,
-      message: 'Registration successful',
-      confirmation_email_sent: true
+      message: 'Registration successful'
+    });
+  } catch (error) {
+    registrationStatus.set(task.ticket_id, { 
+      status: 'failed', 
+      error: error.message || 'Registration failed' 
+    });
+  }
+  
+  // Continue processing next in queue
+  setTimeout(processRegistrationQueue, 100);
+}
+// Start worker
+processRegistrationQueue();
+
+app.post('/api/team-register', registrationLimiter, async (req, res) => {
+  try {
+    const { tournament_id, team_name, team_tag, manager_name, manager_contact, registrar_email, players } = req.body;
+
+    if (!tournament_id || !team_name || !team_tag || !manager_name || !manager_contact || !registrar_email) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    for (const player of players) {
+      if (!player.player_name || !player.player_uid || !player.player_citizenship_photo) {
+        return res.status(400).json({ error: 'All player fields are required (name, UID, photo)' });
+      }
+    }
+
+    const ticket_id = crypto.randomUUID();
+    registrationStatus.set(ticket_id, { status: 'queued' });
+    
+    registrationQueue.push({
+      ticket_id,
+      payload: req.body
     });
 
+    res.json({ ticket_id, status: 'queued', message: 'Registration request received and queued.' });
   } catch (error) {
-    console.error('Error in registration:', error);
-    res.status(500).json({ error: error.message || 'Registration failed' });
+    console.error('Error in registration queuing:', error);
+    res.status(500).json({ error: 'Failed to queue registration' });
   }
+});
+
+app.get('/api/registration-status/:ticket_id', async (req, res) => {
+  const { ticket_id } = req.params;
+  const statusInfo = registrationStatus.get(ticket_id);
+  
+  if (!statusInfo) {
+    return res.status(404).json({ error: 'Ticket not found' });
+  }
+  
+  res.json(statusInfo);
 });
 
 // Get registrations for a tournament
@@ -2168,5 +2216,5 @@ app.use((req, res, next) => {
 
 
 // --- Start server ---
-app.listen(PORT, () => console.log(`Taigour E-Sports server running on http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Taigour E-Sports server running on http://0.0.0.0:${PORT}`));
 
