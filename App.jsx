@@ -233,11 +233,12 @@ const App = () => {
     <Router>
       <RouteMeta />
       <div className="min-h-screen relative bg-bg-dark">
-        <Header />
+        {/* Hide global site header on admin route (admin has its own header) */}
+        {window.location.pathname !== '/admin' && <Header />}
 
         <main className="min-h-[80vh]">
-          
-            <Routes>
+          <Routes>
+
               <Route path="/" element={<HomePage tournaments={tournaments} leaderboard={leaderboard} registrations={registrations} />} />
               <Route path="/tournaments" element={<TournamentsPage tournaments={tournaments} registrations={registrations} />} />
               <Route path="/tournament/:id" element={<TournamentDetailsPage tournaments={tournaments} onRegister={handleRegister} registrations={registrations} />} />
