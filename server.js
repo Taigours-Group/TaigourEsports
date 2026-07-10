@@ -101,6 +101,11 @@ function parseAmount(value) {
 // --- Express Setup ---
 const app = express();
 const PORT = process.env.PORT || 10000;
+
+// Trust the first proxy (Render's reverse proxy) so express-rate-limit
+// can correctly read client IPs from X-Forwarded-For.
+app.set('trust proxy', 1);
+
 app.use(cors());
 
 // Global Rate Limiting
