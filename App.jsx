@@ -6,6 +6,7 @@ import Footer from './components/Footer.jsx';
 import AdminGate from './components/AdminGate.jsx';
 import AdminPanel from './components/AdminPanel.jsx';
 import Preloader from './components/Preloader.jsx';
+import LegalLayout from './pages/LegalLayout.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { dbService } from './services/dbService.js';
 
@@ -17,6 +18,10 @@ const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage.jsx'));
 const StreamsPage = lazy(() => import('./pages/StreamsPage.jsx'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
 const BecomePartnerPage = lazy(() => import('./pages/BecomePartnerPage.jsx'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage.jsx'));
+const LegalLandingPage = lazy(() => import('./pages/LegalLandingPage.jsx'));
+const LegalPage = lazy(() => import('./pages/LegalLayout.jsx'));
 
 const App = () => {
   const [loading, setLoading] = useState(true);
@@ -113,6 +118,14 @@ const App = () => {
         '/admin': {
           title: 'Admin Dashboard | Taigour E-Sports',
           description: 'Manage tournaments, leaderboards, streams, and registrations on Taigour E-Sports.'
+        },
+        '/privacy-policy': {
+          title: 'Privacy Policy | Taigour E-Sports',
+          description: 'Read Taigour E-Sports privacy practices for our website, app, tournaments, and community services.'
+        },
+        '/terms-of-service': {
+          title: 'Terms of Service | Taigour E-Sports',
+          description: 'Review the rules and responsibilities for using Taigour E-Sports services and tournament platforms.'
         }
       };
 
@@ -246,6 +259,10 @@ const App = () => {
               <Route path="/streams" element={<StreamsPage streams={streams} />} />
               <Route path="/profile" element={<ProfilePage tournaments={tournaments} registrations={registrations} leaderboard={leaderboard} />} />
               <Route path="/become-partner" element={<BecomePartnerPage />} />
+              <Route path="/legal" element={<LegalLandingPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+              <Route path="/legal-layout" element={<LegalLayout />} />
 
               {/* Admin Route */}
               <Route path="/admin" element={

@@ -2214,6 +2214,70 @@ app.use((req, res, next) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
+// Add this route to your existing Express app (server.js) on the backend
+// (the Render-deployed project, separate from this Expo app).
+//
+// Serving this page from a real https:// URL — instead of injecting it as
+// an HTML string inside the mobile app's WebView — gives it a genuine
+// origin/referrer that YouTube's embed-verification can actually check.
+// That's what fixes error 153 for good, rather than just reducing it.
+
+app.get('/embed/youtube', (req, res) => {
+  const vid = String(req.query.vid || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!vid) return res.status(400).send('Missing vid');
+
+  res.set('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <style>
+      html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; }
+      #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="player"></div>
+    <script>
+      var tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      function post(type, detail) {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, detail: detail }));
+        }
+      }
+
+      var player;
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          videoId: '${vid}',
+          host: 'https://www.youtube-nocookie.com',
+          playerVars: {
+            autoplay: 1,
+            mute: 1,
+            playsinline: 1,
+            controls: 1,
+            modestbranding: 1,
+            rel: 0,
+          },
+          events: {
+            onReady: function () { post('ready'); },
+            onError: function (e) { post('error', e.data); },
+          },
+        });
+      }
+      setTimeout(function () {
+        if (!player) post('error', 'api_load_timeout');
+      }, 8000);
+    </script>
+  </body>
+</html>`);
+});
+
 
 // --- Start server ---
 app.listen(PORT, '0.0.0.0', () => console.log(`Taigour E-Sports server running on http://0.0.0.0:${PORT}`));
