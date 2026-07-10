@@ -70,7 +70,7 @@ class BalanceService {
   // Admin: Update membership via secure backend API
   async adminUpdateMembership(userId, membershipTier, durationDays = 30) {
     try {
-      const response = await fetch(`http://localhost:10000/api/admin/player/${userId}/membership`, {
+      const response = await fetch(`/api/admin/player/${userId}/membership`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ membershipTier, durationDays })
@@ -87,7 +87,7 @@ class BalanceService {
   // Admin: Update player profile stats via secure backend API
   async adminUpdatePlayerStats(userId, profileUpdates) {
     try {
-      const response = await fetch(`http://localhost:10000/api/admin/player/${userId}/stats`, {
+      const response = await fetch(`/api/admin/player/${userId}/stats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profileUpdates)

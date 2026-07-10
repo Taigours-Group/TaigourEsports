@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
         allowedHosts: 'https://taigouresports.onrender.com',
         proxy: {
           '/api': {
-            target: 'http://localhost:10000 ' || 'https://taigouresports.onrender.com',
+            target: 'http://localhost:10000',
             changeOrigin: true,
             secure: false,
           }
