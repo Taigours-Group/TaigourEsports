@@ -63,12 +63,18 @@ async function ensureWallet(playerId, userId = null) {
   return data;
 }
 
-async function getWallet(playerId) {
-  const { data, error } = await supabase
-    .from('wallets')
-    .select('*')
-    .eq('wallet_id', playerId)
-    .maybeSingle();
+async function getWallet(playerId, userId) {
+  // If we have a userId, fetch by userId and order by balance to protect against
+  // edge cases where a regenerated player_id creates an empty orphaned wallet.
+  let query = supabase.from('wallets').select('*');
+  
+  if (userId) {
+    query = query.eq('user_id', userId).order('available_balance', { ascending: false }).limit(1);
+  } else {
+    query = query.eq('wallet_id', playerId).limit(1);
+  }
+  
+  const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data || null;
 }
@@ -1645,7 +1651,7 @@ app.post('/api/admin/player/:userId/balance', async (req, res) => {
     if (!playerId) return res.status(400).json({ error: 'Player profile missing player_id (wallet id).' });
 
     await ensureWallet(playerId, userId);
-    const wallet = await getWallet(playerId);
+    const wallet = await getWallet(playerId, userId);
 
     const oldBalance = wallet?.available_balance || 0;
     const difference = (newBalance ?? 0) - oldBalance;
@@ -1662,7 +1668,7 @@ app.post('/api/admin/player/:userId/balance', async (req, res) => {
     });
     if (rpcErr) throw rpcErr;
 
-    const updatedWallet = await getWallet(playerId);
+    const updatedWallet = await getWallet(playerId, userId);
 
     res.json({ success: true, data: { user_id: userId, balance: updatedWallet?.available_balance || 0 } });
   } catch (error) {
@@ -2074,7 +2080,10 @@ app.get('/api/balance/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const playerId = await getPlayerIdForUserId(userId).catch(() => null);
+    // Don't swallow profile-lookup errors — if Supabase is still waking up
+    // after a cold start, returning balance:0 would overwrite the real cached
+    // balance on mobile. Let the error propagate so the client retries instead.
+    const playerId = await getPlayerIdForUserId(userId);
     const membership = await ensureMembership(userId);
 
     if (!playerId) {
@@ -2089,7 +2098,7 @@ app.get('/api/balance/:userId', async (req, res) => {
     }
 
     await ensureWallet(playerId, userId);
-    const wallet = await getWallet(playerId);
+    const wallet = await getWallet(playerId, userId);
 
     return res.json({
       user_id: userId,
@@ -2133,7 +2142,7 @@ app.post('/api/balance/add/:userId', async (req, res) => {
     });
     if (rpcErr) throw rpcErr;
 
-    const wallet = await getWallet(playerId);
+    const wallet = await getWallet(playerId, userId);
 
     res.json({
       success: true,
