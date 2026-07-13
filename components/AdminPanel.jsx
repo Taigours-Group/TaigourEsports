@@ -1,9 +1,11 @@
 
 import React, { useState, useMemo, lazy, Suspense, useEffect } from 'react';
+import { adminFetch } from '../services/adminAuth';
 
 // Lazy-load AdminRequestsPanel at module level (not inside a render function)
 const AdminRequestsPanel = lazy(() => import('./AdminRequestsPanel'));
 import PlayerStatsAdmin from './PlayerStatsAdmin';
+import NotificationsAdmin from './NotificationsAdmin';
 
 const AdminPanel = ({
   tournaments, saveTournaments, refetchTournaments,
@@ -59,7 +61,7 @@ const AdminPanel = ({
     if (!viewingReg?.id) return;
     setSavingReg(true);
     try {
-      const response = await fetch(`/api/admin/registrations/${viewingReg.id}`, {
+      const response = await adminFetch(`/api/admin/registrations/${viewingReg.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -202,14 +204,14 @@ const AdminPanel = ({
       let response;
       if (editingId) {
         // Update existing tournament
-        response = await fetch(`/api/admin/tournaments/${editingId}`, {
+        response = await adminFetch(`/api/admin/tournaments/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(finalForm)
         });
       } else {
         // Create new tournament
-        response = await fetch('/api/admin/tournaments/add', {
+        response = await adminFetch('/api/admin/tournaments/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(finalForm)
@@ -243,14 +245,14 @@ const AdminPanel = ({
       let response;
       if (editingId) {
         // Update existing leaderboard entry
-        response = await fetch(`/api/admin/leaderboard/${editingId}`, {
+        response = await adminFetch(`/api/admin/leaderboard/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(lbForm)
         });
       } else {
         // Create new leaderboard entry
-        response = await fetch('/api/admin/leaderboard/add', {
+        response = await adminFetch('/api/admin/leaderboard/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(lbForm)
@@ -290,14 +292,14 @@ const AdminPanel = ({
       let response;
       if (editingId) {
         // Update existing stream
-        response = await fetch(`/api/admin/streams/${editingId}`, {
+        response = await adminFetch(`/api/admin/streams/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(finalForm)
         });
       } else {
         // Create new stream
-        response = await fetch('/api/admin/streams/add', {
+        response = await adminFetch('/api/admin/streams/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(finalForm)
@@ -328,22 +330,22 @@ const AdminPanel = ({
     try {
       switch (activeView) {
         case 'tournaments': {
-          const res = await fetch(`/api/admin/tournaments/${id}`, { method: 'DELETE' });
+          const res = await adminFetch(`/api/admin/tournaments/${id}`, { method: 'DELETE' });
           if (res.ok) await saveTournaments(tournaments.filter(t => t.id !== id));
           break;
         }
         case 'leaderboard': {
-          const res = await fetch(`/api/admin/leaderboard/${id}`, { method: 'DELETE' });
+          const res = await adminFetch(`/api/admin/leaderboard/${id}`, { method: 'DELETE' });
           if (res.ok) await saveLeaderboard(leaderboard.filter(l => l.id !== id));
           break;
         }
         case 'streams': {
-          const res = await fetch(`/api/admin/streams/${id}`, { method: 'DELETE' });
+          const res = await adminFetch(`/api/admin/streams/${id}`, { method: 'DELETE' });
           if (res.ok) await saveStreams(streams.filter(s => s.id !== id));
           break;
         }
         case 'registrations': {
-          const res = await fetch(`/api/admin/registrations/${id}`, { method: 'DELETE' });
+          const res = await adminFetch(`/api/admin/registrations/${id}`, { method: 'DELETE' });
           if (res.ok) await saveRegistrations(registrations.filter(r => r.id !== id));
           break;
         }
@@ -436,7 +438,7 @@ const AdminPanel = ({
     // Persist SMS status in database so personnel status stays true after refresh.
     if (registration?.id) {
       try {
-        const response = await fetch(`/api/admin/registrations/${registration.id}`, {
+        const response = await adminFetch(`/api/admin/registrations/${registration.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedRegistration)
@@ -511,6 +513,7 @@ const AdminPanel = ({
               { id: 'leaderboard', label: 'Ranks', icon: 'fa-crown' },
               { id: 'streams', label: 'Feeds', icon: 'fa-bolt' }, 
               { id: 'registrations', label: 'Teams', icon: 'fa-users' },
+              { id: 'notifications', label: 'Notify', icon: 'fa-bell' },
               { id: 'requests', label: 'Requests', icon: 'fa-inbox' },
               { id: 'logs', label: 'Logs', icon: 'fa-list-ul' }
             ].map(tab => (
@@ -757,6 +760,10 @@ const AdminPanel = ({
 
             {activeView === 'players' && (
               <PlayerStatsAdmin registrations={registrations} />
+            )}
+
+            {activeView === 'notifications' && (
+              <NotificationsAdmin />
             )}
 
             {activeView === 'requests' && (

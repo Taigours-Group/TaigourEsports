@@ -1,68 +1,66 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
+import { adminLogin, adminLogout, isAdminAuthenticated } from '../services/adminAuth';
 
-// Admin password sourced from env — set VITE_ADMIN_PASSWORD in your .env file
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Taigours2026';
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+// SECURITY NOTE: this used to compare the typed password directly against
+// import.meta.env.VITE_ADMIN_PASSWORD in the browser - Vite bundles VITE_
+// prefixed env vars straight into the shipped JS, so that "secret" was
+// readable by anyone who opened devtools, and no backend was ever actually
+// checked. It now calls POST /api/admin/login, which verifies credentials
+// server-side and returns a real JWT that every /api/admin/* route
+// verifies via requireAdminRole.
 
-export default function AdminGate({ children }) { 
-  const [input, setInput] = useState('');
-  
-  // Logic to verify if session is still valid
-  const isSessionValid = useCallback(() => {
-    const loginTime = localStorage.getItem('admin_login_time');
-    if (!loginTime) return false;
+export default function AdminGate({ children }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(isAdminAuthenticated());
 
-    const now = new Date().getTime();
-    const isExpired = now - parseInt(loginTime) > SESSION_TIMEOUT;
+  const handleSessionExpired = useCallback(() => setIsUnlocked(false), []);
 
-    if (isExpired) {
-      localStorage.removeItem('admin_login_time');
-      return false;
-    }
-    return true;
-  }, []);
+  useEffect(() => {
+    window.addEventListener('admin-session-expired', handleSessionExpired);
+    return () => window.removeEventListener('admin-session-expired', handleSessionExpired);
+  }, [handleSessionExpired]);
 
-  const [isUnlocked, setIsUnlocked] = useState(isSessionValid());
-
-  // Auto-logout effect: checks every minute if session expired
+  // The token itself carries an expiry (checked in adminAuth.getAdminToken);
+  // poll lightly just to reflect that in the UI if the tab is left open.
   useEffect(() => {
     if (!isUnlocked) return;
-
     const interval = setInterval(() => {
-      if (!isSessionValid()) {
-        setIsUnlocked(false);
-      }
-    }, 60000); // Check every 60 seconds
-
+      if (!isAdminAuthenticated()) setIsUnlocked(false);
+    }, 60000);
     return () => clearInterval(interval);
-  }, [isUnlocked, isSessionValid]);
+  }, [isUnlocked]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (input === ADMIN_PASSWORD) {
-      const now = new Date().getTime();
-      localStorage.setItem('admin_login_time', now.toString());
+    setError('');
+    setSubmitting(true);
+    try {
+      await adminLogin(username, password);
       setIsUnlocked(true);
-      setInput(''); // Clear input
-    } else {
-      alert("Incorrect Password");
+      setUsername('');
+      setPassword('');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_login_time');
+    adminLogout();
     setIsUnlocked(false);
-    // Optional: force a page reload to ensure all admin states are wiped
-    window.location.href = '#/'; 
+    window.location.href = '#/';
   };
 
   if (!isUnlocked) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'center',
         height: '100vh',
         backgroundColor: '#070709',
@@ -77,40 +75,46 @@ export default function AdminGate({ children }) {
           </h2>
           <p style={{ fontSize: '10px', color: '#555', marginTop: '5px', letterSpacing: '0.4em' }}>ENCRYPTED SECTOR</p>
         </div>
-        <form onSubmit={handleLogin} style={{ display: 'flex', gap: '10px' }}>
-          <input 
-            type="password" 
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="text"
             autoFocus
-            placeholder="ADMIN_PASS_KEY" 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            style={{ 
-              padding: '14px 20px', 
-              borderRadius: '4px', 
-              border: '1px solid #00d4ff33', 
-              backgroundColor: '#0f0f13', 
-              color: '#fff',
-              outline: 'none',
-              fontSize: '12px',
-              fontFamily: 'Rajdhani, sans-serif',
-              fontWeight: '700'
-            }}
+            placeholder="ADMIN_USERNAME"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            style={inputStyle}
           />
-          <button 
-            type="submit" 
+          <input
+            type="password"
+            placeholder="ADMIN_PASS_KEY"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            style={inputStyle}
+          />
+          {error && (
+            <p style={{ color: '#ff0080', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
             className="cyber-button"
-            style={{ 
-              padding: '10px 25px', 
-              backgroundColor: '#00d4ff', 
-              color: '#000', 
+            style={{
+              padding: '10px 25px',
+              backgroundColor: '#00d4ff',
+              color: '#000',
               fontWeight: '900',
-              cursor: 'pointer',
+              cursor: submitting ? 'wait' : 'pointer',
               border: 'none',
               fontSize: '10px',
-              fontFamily: 'Orbitron, sans-serif'
+              fontFamily: 'Orbitron, sans-serif',
+              opacity: submitting ? 0.6 : 1
             }}
           >
-            DECRYPT
+            {submitting ? 'VERIFYING...' : 'DECRYPT'}
           </button>
         </form>
       </div>
@@ -119,13 +123,13 @@ export default function AdminGate({ children }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button 
-        onClick={handleLogout} 
+      <button
+        onClick={handleLogout}
         className="font-orbitron font-black text-[9px] uppercase tracking-widest"
-        style={{ 
-          position: 'fixed', 
-          top: '100px', 
-          right: '24px', 
+        style={{
+          position: 'fixed',
+          top: '100px',
+          right: '24px',
           zIndex: 9999,
           padding: '10px 20px',
           backgroundColor: '#ff0080',
@@ -146,3 +150,16 @@ export default function AdminGate({ children }) {
     </div>
   );
 }
+
+const inputStyle = {
+  padding: '14px 20px',
+  borderRadius: '4px',
+  border: '1px solid #00d4ff33',
+  backgroundColor: '#0f0f13',
+  color: '#fff',
+  outline: 'none',
+  fontSize: '12px',
+  fontFamily: 'Rajdhani, sans-serif',
+  fontWeight: '700',
+  width: '260px'
+};

@@ -12,7 +12,7 @@ export function getVisitorId() {
 }
 
 function getAdminKey() {
-  return import.meta.env.VITE_ADMIN_PASSWORD || '';
+  return import.meta.env.ADMIN_PASSWORD || '';
 }
 
 class StreamService {

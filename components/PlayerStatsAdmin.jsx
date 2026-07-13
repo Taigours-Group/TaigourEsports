@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { adminFetch } from '../services/adminAuth';
 import { balanceService } from '../services/balanceService';
 import { MEMBERSHIP_BENEFITS, MEMBERSHIP_TIERS } from '../constants/balanceConstants';
 
@@ -56,7 +57,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
     setLedgerWalletId(walletId);
     setLedgerLoading(true);
     try {
-      const response = await fetch(`/api/admin/ledger/${encodeURIComponent(walletId)}?limit=50`);
+      const response = await adminFetch(`/api/admin/ledger/${encodeURIComponent(walletId)}?limit=50`);
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to fetch ledger');
       setLedgerRows(result.data || []);

@@ -472,7 +472,7 @@ app.post('/api/purchase-request', async (req, res) => {
 });
 
 // Get purchase requests (admin)
-app.get('/api/purchase-requests', async (req, res) => {
+app.get('/api/purchase-requests', requireAdminRole, async (req, res) => {
   const status = req.query.status || null;
   try {
     let q = supabase.from('purchase_requests').select('*').order('created_at', { ascending: false });
@@ -487,7 +487,7 @@ app.get('/api/purchase-requests', async (req, res) => {
 });
 
 // Approve request - admin action: adds balance or membership
-app.put('/api/purchase-requests/:id/approve', async (req, res) => {
+app.put('/api/purchase-requests/:id/approve', requireAdminRole, async (req, res) => {
   const id = req.params.id;
   const { admin_notes } = req.body;
   try {
@@ -553,7 +553,7 @@ app.put('/api/purchase-requests/:id/approve', async (req, res) => {
 });
 
 // Decline request
-app.put('/api/purchase-requests/:id/decline', async (req, res) => {
+app.put('/api/purchase-requests/:id/decline', requireAdminRole, async (req, res) => {
   const id = req.params.id;
   const { admin_notes } = req.body;
   try {
@@ -1176,7 +1176,7 @@ app.get('/api/team-registration/:id/players', async (req, res) => {
 });
 
 // Admin: Get all registrations (with filters)
-app.get('/api/admin/team-registrations', async (req, res) => {
+app.get('/api/admin/team-registrations', requireAdminRole, async (req, res) => {
   try {
     const { tournament_id, status } = req.query;
 
@@ -1207,7 +1207,7 @@ app.get('/api/admin/team-registrations', async (req, res) => {
 });
 
 // Admin: Update registration status
-app.put('/api/admin/team-registrations/:id', async (req, res) => {
+app.put('/api/admin/team-registrations/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
     const { payment_status, notes } = req.body;
@@ -1259,21 +1259,80 @@ app.get('/api/logs', async (req, res) => {
   }
 });
 
-// Admin login
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-    return res.json({
-      success: true,
-      token: 'admin-token-' + Date.now(),
-      user: { name: 'Admin', role: 'admin' } 
-    });
-  }
-  res.status(401).json({ success: false, message: 'Invalid credentials' });
+// Admin login - issues a real, verifiable JWT (replaces the old fake
+// 'admin-token-' + Date.now() placeholder, which requireAdminRole/JWT
+// verification would have rejected anyway).
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 8,
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
+app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminUuid = process.env.ADMIN_UUID;
+    const jwtSecret = process.env.ADMIN_JWT_SECRET;
+
+    if (!adminUsername || !adminPassword || !adminUuid || !jwtSecret) {
+      console.error('Admin auth is not fully configured (ADMIN_USERNAME/ADMIN_PASSWORD/ADMIN_UUID/ADMIN_JWT_SECRET).');
+      return safeError(res, 500, 'Server configuration error');
+    }
+
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return safeError(res, 400, 'Username and password are required');
+    }
+
+    // Constant-time comparisons to avoid timing side-channels.
+    const userBuf = Buffer.from(username);
+    const userTarget = Buffer.from(adminUsername);
+    const passBuf = Buffer.from(password);
+    const passTarget = Buffer.from(adminPassword);
+    const userMatch = userBuf.length === userTarget.length && crypto.timingSafeEqual(userBuf, userTarget);
+    const passMatch = passBuf.length === passTarget.length && crypto.timingSafeEqual(passBuf, passTarget);
+
+    if (!userMatch || !passMatch) {
+      return safeError(res, 401, 'Invalid credentials');
+    }
+
+    // Look up the admin's role from admin_users (seeded via the SQL migration,
+    // keyed by ADMIN_UUID). Falls back to 'admin' if not seeded yet so login
+    // isn't a hard blocker, but role-restricted routes will still enforce it.
+    const { data: adminRow } = await supabase
+      .from('admin_users')
+      .select('role')
+      .eq('user_uuid', adminUuid)
+      .maybeSingle();
+
+    const role = adminRow?.role || 'admin';
+
+    const token = jwt.sign({ sub: adminUuid, role }, jwtSecret, { expiresIn: '8h' });
+
+    return res.json({
+      success: true,
+      token,
+      expiresIn: 8 * 60 * 60,
+      user: { name: adminUsername, role }
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    return safeError(res, 500, 'Login failed');
+  }
+});
+
+// Deprecated alias kept so any old client code doesn't 404 outright, but it
+// no longer issues a usable token - point clients at /api/admin/login.
+app.post('/api/login', (req, res) => {
+  return res.status(410).json({ success: false, message: 'This endpoint has moved to POST /api/admin/login' });
+});
+
+
 // Admin: Update tournaments (bulk)
-app.post('/api/admin/tournaments', async (req, res) => {
+app.post('/api/admin/tournaments', requireAdminRole, async (req, res) => {
   try {
     const tournaments = req.body;
 
@@ -1307,7 +1366,7 @@ app.post('/api/admin/tournaments', async (req, res) => {
 });
 
 // Admin: Update leaderboard (bulk)
-app.post('/api/admin/leaderboard', async (req, res) => {
+app.post('/api/admin/leaderboard', requireAdminRole, async (req, res) => {
   try {
     const leaderboard = req.body;
     // Clear existing and insert new
@@ -1340,7 +1399,7 @@ app.post('/api/admin/leaderboard', async (req, res) => {
 });
 
 // Admin: Update streams (bulk)
-app.post('/api/admin/streams', async (req, res) => {
+app.post('/api/admin/streams', requireAdminRole, async (req, res) => {
   try {
     const streams = req.body;
 
@@ -1374,7 +1433,7 @@ app.post('/api/admin/streams', async (req, res) => {
 });
 
 // Admin: Restore database
-app.post('/api/admin/restore', async (req, res) => {
+app.post('/api/admin/restore', requireAdminRole, async (req, res) => {
   try {
     const { tournaments, leaderboard, streams, registrations } = req.body;
 
@@ -1484,7 +1543,7 @@ app.post('/api/admin/restore', async (req, res) => {
 // --- Individual CRUD Operations for Admin Panel ---
 
 // Tournaments CRUD
-app.post('/api/admin/tournaments/add', async (req, res) => {
+app.post('/api/admin/tournaments/add', requireAdminRole, async (req, res) => {
   try {
     const newTournament = req.body;
     if (!newTournament.id) newTournament.id = Date.now().toString();
@@ -1506,7 +1565,7 @@ app.post('/api/admin/tournaments/add', async (req, res) => {
   }
 });
 
-app.put('/api/admin/tournaments/:id', async (req, res) => {
+app.put('/api/admin/tournaments/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
     const updatedTournament = req.body;
@@ -1533,7 +1592,7 @@ app.put('/api/admin/tournaments/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/tournaments/:id', async (req, res) => {
+app.delete('/api/admin/tournaments/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1555,7 +1614,7 @@ app.delete('/api/admin/tournaments/:id', async (req, res) => {
 });
 
 // Leaderboard CRUD
-app.post('/api/admin/leaderboard/add', async (req, res) => {
+app.post('/api/admin/leaderboard/add', requireAdminRole, async (req, res) => {
   try {
     const newEntry = req.body;
     if (!newEntry.id) newEntry.id = Date.now().toString();
@@ -1593,7 +1652,7 @@ app.post('/api/admin/leaderboard/add', async (req, res) => {
   }
 });
 
-app.put('/api/admin/leaderboard/:id', async (req, res) => {
+app.put('/api/admin/leaderboard/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
     const updatedEntry = req.body;
@@ -1620,7 +1679,7 @@ app.put('/api/admin/leaderboard/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/leaderboard/:id', async (req, res) => {
+app.delete('/api/admin/leaderboard/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1642,7 +1701,7 @@ app.delete('/api/admin/leaderboard/:id', async (req, res) => {
 });
 
 // Admin: Update Player Balance
-app.post('/api/admin/player/:userId/balance', async (req, res) => {
+app.post('/api/admin/player/:userId/balance', requireAdminRole, async (req, res) => {
   try {
     const { userId } = req.params;
     const { newBalance, reason } = req.body;
@@ -1678,7 +1737,7 @@ app.post('/api/admin/player/:userId/balance', async (req, res) => {
 });
 
 // Admin: update membership (new system)
-app.post('/api/admin/player/:userId/membership', async (req, res) => {
+app.post('/api/admin/player/:userId/membership', requireAdminRole, async (req, res) => {
   try {
     const { userId } = req.params;
     const { membershipTier, durationDays } = req.body;
@@ -1701,7 +1760,7 @@ app.post('/api/admin/player/:userId/membership', async (req, res) => {
 });
 
 // Admin: list all players + wallets + memberships (formerly wallet-centric, now profile-centric)
-app.get('/api/admin/wallets', async (req, res) => {
+app.get('/api/admin/wallets', requireAdminRole, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
     const offset = parseInt(req.query.offset) || 0;
@@ -1759,7 +1818,7 @@ app.get('/api/admin/wallets', async (req, res) => {
 });
 
 // Admin: wallet ledger by wallet_id
-app.get('/api/admin/ledger/:walletId', async (req, res) => {
+app.get('/api/admin/ledger/:walletId', requireAdminRole, async (req, res) => {
   try {
     const { walletId } = req.params;
     const limit = parseInt(req.query.limit) || 100;
@@ -1822,7 +1881,7 @@ app.post('/api/wallet/transfer', async (req, res) => {
 });
 
 // Admin: Update Player Stats & Achievements
-app.post('/api/admin/player/:userId/stats', async (req, res) => {
+app.post('/api/admin/player/:userId/stats', requireAdminRole, async (req, res) => {
   try {
     const { userId } = req.params;
     const profileUpdates = req.body;
@@ -1880,7 +1939,7 @@ app.post('/api/admin/player/:userId/stats', async (req, res) => {
 });
 
 // Streams CRUD
-app.post('/api/admin/streams/add', async (req, res) => {
+app.post('/api/admin/streams/add', requireAdminRole, async (req, res) => {
   try {
     const newStream = req.body;
     if (!newStream.id) newStream.id = Date.now().toString();
@@ -1902,7 +1961,7 @@ app.post('/api/admin/streams/add', async (req, res) => {
   }
 });
 
-app.put('/api/admin/streams/:id', async (req, res) => {
+app.put('/api/admin/streams/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
     const updatedStream = req.body;
@@ -1929,7 +1988,7 @@ app.put('/api/admin/streams/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/streams/:id', async (req, res) => {
+app.delete('/api/admin/streams/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2003,7 +2062,7 @@ let query = supabase
   }
 });
 
-app.post('/api/admin/registrations/add', async (req, res) => {
+app.post('/api/admin/registrations/add', requireAdminRole, async (req, res) => {
   try {
     const newRegistration = req.body;
     if (!newRegistration.id) newRegistration.id = Date.now().toString();
@@ -2025,7 +2084,7 @@ app.post('/api/admin/registrations/add', async (req, res) => {
   }
 });
 
-app.put('/api/admin/registrations/:id', async (req, res) => {
+app.put('/api/admin/registrations/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
     const updatedRegistration = req.body;
@@ -2052,7 +2111,7 @@ app.put('/api/admin/registrations/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/registrations/:id', async (req, res) => {
+app.delete('/api/admin/registrations/:id', requireAdminRole, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2205,6 +2264,658 @@ app.get('/api/transactions/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
+
+// =====================================================================
+// NOTIFICATION SYSTEM
+// =====================================================================
+
+// --- Verify a Supabase end-user session (mobile app user), separate from
+// the admin JWT system above. Used for push-token registration and reading
+// a user's own in-app notifications. ---
+async function requireUser(req, res, next) {
+  try {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return safeError(res, 401, 'Unauthorized');
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user?.id) return safeError(res, 401, 'Unauthorized');
+
+    req.userId = data.user.id;
+    return next();
+  } catch (e) {
+    return safeError(res, 401, 'Unauthorized');
+  }
+}
+
+const notificationWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// --- Expo push dispatch -------------------------------------------------
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+const EXPO_PUSH_CHUNK_SIZE = 90; // Expo recommends <=100 per request
+
+function chunkArray(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function sendExpoPushChunk(messages) {
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  if (process.env.EXPO_ACCESS_TOKEN) {
+    headers['Authorization'] = `Bearer ${process.env.EXPO_ACCESS_TOKEN}`;
+  }
+  const response = await fetch(EXPO_PUSH_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(messages)
+  });
+  const json = await response.json().catch(() => null);
+  if (!response.ok || !json) {
+    throw new Error(`Expo push request failed (${response.status})`);
+  }
+  return json.data || []; // array of { status, id, message?, details? }
+}
+
+// --- Resolve which user_ids a notification should go to -----------------
+async function resolveTargetUserIds(notification) {
+  const { target_type, target_segment, target_user_ids } = notification;
+
+  if (target_type === 'users') {
+    return Array.from(new Set((target_user_ids || []).filter(Boolean)));
+  }
+
+  if (target_type === 'all') {
+    const { data, error } = await supabase.from('profiles').select('id');
+    if (error) throw error;
+    return (data || []).map((r) => r.id);
+  }
+
+  if (target_type === 'segment') {
+    const seg = target_segment || {};
+
+    if (seg.type === 'membership_tier' && seg.value) {
+      const { data, error } = await supabase
+        .from('player_memberships')
+        .select('user_id')
+        .eq('membership_tier', seg.value);
+      if (error) throw error;
+      return Array.from(new Set((data || []).map((r) => r.user_id).filter(Boolean)));
+    }
+
+    if (seg.type === 'has_balance') {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('user_id')
+        .gt('available_balance', 0);
+      if (error) throw error;
+      return Array.from(new Set((data || []).map((r) => r.user_id).filter(Boolean)));
+    }
+
+    throw new Error(`Unknown or unsupported segment type: ${seg.type}`);
+  }
+
+  throw new Error(`Unknown target_type: ${target_type}`);
+}
+
+// --- Compute the next occurrence for a recurring notification ------------
+function computeNextScheduledAt(fromDate, recurrenceRule) {
+  const next = new Date(fromDate);
+  switch (recurrenceRule) {
+    case 'daily':
+      next.setDate(next.getDate() + 1);
+      return next;
+    case 'weekly':
+      next.setDate(next.getDate() + 7);
+      return next;
+    case 'monthly':
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    default:
+      return null;
+  }
+}
+
+// --- Actually dispatch a single notification: resolve recipients, write
+// notification_recipients rows, send push to all active tokens, update
+// statuses. Safe to call from send-now, from the scheduler loop.
+async function dispatchNotification(notificationId) {
+  const { data: notification, error: fetchErr } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('id', notificationId)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+  if (!notification) throw new Error('Notification not found');
+
+  await supabase.from('notifications').update({ status: 'sending' }).eq('id', notificationId);
+
+  let userIds = [];
+  try {
+    userIds = await resolveTargetUserIds(notification);
+  } catch (e) {
+    await supabase.from('notifications').update({ status: 'failed' }).eq('id', notificationId);
+    throw e;
+  }
+
+  if (userIds.length === 0) {
+    await supabase
+      .from('notifications')
+      .update({ status: 'sent', sent_at: new Date().toISOString() })
+      .eq('id', notificationId);
+    return { recipients: 0, pushed: 0 };
+  }
+
+  // Create (or reuse, if re-sending) recipient rows in-app first so the
+  // notification center works even for users with push disabled/no token.
+  const recipientRows = userIds.map((user_id) => ({ notification_id: notificationId, user_id }));
+  const { error: recErr } = await supabase
+    .from('notification_recipients')
+    .upsert(recipientRows, { onConflict: 'notification_id,user_id', ignoreDuplicates: true });
+  if (recErr) throw recErr;
+
+  // Pull active push tokens for these users.
+  const { data: tokenRows, error: tokErr } = await supabase
+    .from('push_tokens')
+    .select('user_id, expo_push_token')
+    .in('user_id', userIds)
+    .eq('is_active', true);
+  if (tokErr) throw tokErr;
+
+  const messages = (tokenRows || []).map((t) => ({
+    to: t.expo_push_token,
+    title: notification.title,
+    body: notification.body,
+    sound: notification.sound || 'default',
+    priority: notification.priority === 'high' ? 'high' : 'default',
+    channelId: notification.category || 'default',
+    data: {
+      notificationId: notification.id,
+      category: notification.category,
+      deepLink: notification.deep_link || null,
+      ...(notification.data || {})
+    }
+  }));
+
+  let pushedCount = 0;
+  const failedTokens = [];
+
+  for (const chunk of chunkArray(messages, EXPO_PUSH_CHUNK_SIZE)) {
+    try {
+      const results = await sendExpoPushChunk(chunk);
+      results.forEach((r, i) => {
+        if (r.status === 'ok') {
+          pushedCount += 1;
+        } else {
+          failedTokens.push({ token: chunk[i].to, error: r.message || r.details?.error });
+        }
+      });
+    } catch (e) {
+      chunk.forEach((m) => failedTokens.push({ token: m.to, error: e.message }));
+    }
+  }
+
+  // Mark recipients whose token(s) we successfully queued as 'sent'.
+  const sentUserIds = Array.from(
+    new Set(
+      (tokenRows || [])
+        .filter((t) => !failedTokens.some((f) => f.token === t.expo_push_token))
+        .map((t) => t.user_id)
+    )
+  );
+  if (sentUserIds.length > 0) {
+    await supabase
+      .from('notification_recipients')
+      .update({ push_status: 'sent' })
+      .eq('notification_id', notificationId)
+      .in('user_id', sentUserIds);
+  }
+
+  // Deactivate tokens Expo says are dead (DeviceNotRegistered).
+  const deadTokens = failedTokens
+    .filter((f) => (f.error || '').includes('DeviceNotRegistered'))
+    .map((f) => f.token);
+  if (deadTokens.length > 0) {
+    await supabase.from('push_tokens').update({ is_active: false }).in('expo_push_token', deadTokens);
+  }
+
+  await supabase
+    .from('notifications')
+    .update({ status: 'sent', sent_at: new Date().toISOString() })
+    .eq('id', notificationId);
+
+  // Recurring: schedule the next occurrence as a fresh notification row.
+  if (notification.recurrence_rule) {
+    const base = notification.scheduled_at ? new Date(notification.scheduled_at) : new Date();
+    const next = computeNextScheduledAt(base, notification.recurrence_rule);
+    const pastEnd =
+      notification.recurrence_end_at && next && next > new Date(notification.recurrence_end_at);
+
+    if (next && !pastEnd) {
+      await supabase.from('notifications').insert({
+        title: notification.title,
+        body: notification.body,
+        image_url: notification.image_url,
+        icon: notification.icon,
+        color: notification.color,
+        category: notification.category,
+        deep_link: notification.deep_link,
+        data: notification.data,
+        priority: notification.priority,
+        sound: notification.sound,
+        target_type: notification.target_type,
+        target_segment: notification.target_segment,
+        target_user_ids: notification.target_user_ids,
+        status: 'scheduled',
+        scheduled_at: next.toISOString(),
+        recurrence_rule: notification.recurrence_rule,
+        recurrence_end_at: notification.recurrence_end_at,
+        parent_notification_id: notification.parent_notification_id || notification.id,
+        created_by: notification.created_by
+      });
+    }
+  }
+
+  return { recipients: userIds.length, pushed: pushedCount, failed: failedTokens.length };
+}
+
+// --- Scheduler: polls every 60s for due scheduled notifications ----------
+// NOTE: for higher volume/production hardening beyond this scale, replace
+// with a real job queue (e.g. BullMQ + Redis) or a Supabase pg_cron +
+// Edge Function trigger. A single-process interval is sufficient for a
+// single Render instance but won't dedupe correctly across multiple
+// instances - add a `select ... for update skip locked` claim if you scale
+// server.js horizontally.
+let schedulerRunning = false;
+async function runNotificationScheduler() {
+  if (schedulerRunning) return;
+  schedulerRunning = true;
+  try {
+    const { data: due, error } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('status', 'scheduled')
+      .lte('scheduled_at', new Date().toISOString())
+      .limit(20);
+    if (error) {
+      console.error('Notification scheduler lookup failed:', error);
+      return;
+    }
+    for (const row of due || []) {
+      try {
+        await dispatchNotification(row.id);
+      } catch (e) {
+        console.error(`Failed to dispatch scheduled notification ${row.id}:`, e.message);
+      }
+    }
+  } finally {
+    schedulerRunning = false;
+  }
+}
+setInterval(runNotificationScheduler, 60 * 1000);
+
+// --- User-facing routes ---------------------------------------------------
+
+// Register / refresh a device's Expo push token.
+app.post('/api/push-tokens', requireUser, notificationWriteLimiter, async (req, res) => {
+  try {
+    const { expo_push_token, device_type, device_name } = req.body || {};
+    if (!expo_push_token || typeof expo_push_token !== 'string') {
+      return safeError(res, 400, 'expo_push_token is required');
+    }
+    const { data, error } = await supabase
+      .from('push_tokens')
+      .upsert(
+        {
+          user_id: req.userId,
+          expo_push_token,
+          device_type: ['ios', 'android', 'web'].includes(device_type) ? device_type : null,
+          device_name: device_name || null,
+          is_active: true,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'expo_push_token' }
+      )
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error registering push token:', error);
+    res.status(500).json({ error: 'Failed to register push token' });
+  }
+});
+
+// Deactivate a token (e.g. on logout) so it stops receiving pushes.
+app.delete('/api/push-tokens', requireUser, notificationWriteLimiter, async (req, res) => {
+  try {
+    const { expo_push_token } = req.body || {};
+    if (!expo_push_token) return safeError(res, 400, 'expo_push_token is required');
+    const { error } = await supabase
+      .from('push_tokens')
+      .update({ is_active: false })
+      .eq('user_id', req.userId)
+      .eq('expo_push_token', expo_push_token);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deactivating push token:', error);
+    res.status(500).json({ error: 'Failed to deactivate push token' });
+  }
+});
+
+// List the current user's in-app notifications (paginated).
+app.get('/api/notifications', requireUser, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    const offset = parseInt(req.query.offset, 10) || 0;
+
+    const { data, error, count } = await supabase
+      .from('notification_recipients')
+      .select('id, is_read, read_at, created_at, notifications(*)', { count: 'exact' })
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+
+    const { count: unreadCount } = await supabase
+      .from('notification_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', req.userId)
+      .eq('is_read', false);
+
+    res.json({
+      data: (data || []).map((r) => ({
+        recipient_id: r.id,
+        is_read: r.is_read,
+        read_at: r.read_at,
+        received_at: r.created_at,
+        ...r.notifications
+      })),
+      total: count || 0,
+      unread_count: unreadCount || 0
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+app.get('/api/notifications/unread-count', requireUser, async (req, res) => {
+  try {
+    const { count, error } = await supabase
+      .from('notification_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', req.userId)
+      .eq('is_read', false);
+    if (error) throw error;
+    res.json({ unread_count: count || 0 });
+  } catch (error) {
+    console.error('Error fetching unread count:', error);
+    res.status(500).json({ error: 'Failed to fetch unread count' });
+  }
+});
+
+app.post('/api/notifications/:recipientId/read', requireUser, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('notification_recipients')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('id', req.params.recipientId)
+      .eq('user_id', req.userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking notification read:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
+app.post('/api/notifications/read-all', requireUser, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('notification_recipients')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('user_id', req.userId)
+      .eq('is_read', false);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking all notifications read:', error);
+    res.status(500).json({ error: 'Failed to mark all as read' });
+  }
+});
+
+// --- Admin routes -----------------------------------------------------
+
+const notificationSchema = z.object({
+  title: z.string().min(1).max(120),
+  body: z.string().min(1).max(500),
+  image_url: z.string().url().optional().nullable(),
+  icon: z.string().max(50).optional().nullable(),
+  color: z.string().max(20).optional().nullable(),
+  category: z.enum(['general', 'tournament', 'promo', 'wallet', 'system', 'stream']).default('general'),
+  deep_link: z.string().max(500).optional().nullable(),
+  data: z.record(z.any()).optional().default({}),
+  priority: z.enum(['default', 'high']).default('default'),
+  sound: z.string().max(50).optional().default('default'),
+  target_type: z.enum(['all', 'segment', 'users']),
+  target_segment: z.record(z.any()).optional().nullable(),
+  target_user_ids: z.array(z.string().uuid()).optional().nullable(),
+  scheduled_at: z.string().datetime().optional().nullable(),
+  recurrence_rule: z.enum(['daily', 'weekly', 'monthly']).optional().nullable(),
+  recurrence_end_at: z.string().datetime().optional().nullable()
+});
+
+// Create a notification: sends immediately if no scheduled_at is given,
+// otherwise stores it as 'scheduled' for the poller to pick up.
+app.post('/api/admin/notifications', requireAdminRole, notificationWriteLimiter, async (req, res) => {
+  try {
+    const parsed = notificationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid notification payload', details: parsed.error.flatten() });
+    }
+    const payload = parsed.data;
+
+    if (payload.target_type === 'users' && (!payload.target_user_ids || payload.target_user_ids.length === 0)) {
+      return safeError(res, 400, 'target_user_ids is required when target_type is "users"');
+    }
+    if (payload.target_type === 'segment' && !payload.target_segment?.type) {
+      return safeError(res, 400, 'target_segment.type is required when target_type is "segment"');
+    }
+
+    const isScheduled = Boolean(payload.scheduled_at) && new Date(payload.scheduled_at) > new Date();
+
+    const { data: created, error } = await supabase
+      .from('notifications')
+      .insert({
+        ...payload,
+        status: isScheduled ? 'scheduled' : 'draft',
+        created_by: req.admin.user_uuid
+      })
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!isScheduled) {
+      // Send now.
+      dispatchNotification(created.id).catch((e) =>
+        console.error(`Failed to send notification ${created.id}:`, e.message)
+      );
+    }
+
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({ error: 'Failed to create notification' });
+  }
+});
+
+// History / list, most recent first, optional status filter.
+app.get('/api/admin/notifications', requireAdminRole, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
+    const offset = parseInt(req.query.offset, 10) || 0;
+    let query = supabase
+      .from('notifications')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (req.query.status) query = query.eq('status', req.query.status);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+    res.json({ data: data || [], total: count || 0 });
+  } catch (error) {
+    console.error('Error listing notifications:', error);
+    res.status(500).json({ error: 'Failed to list notifications' });
+  }
+});
+
+// Detail + delivery stats for one notification.
+app.get('/api/admin/notifications/:id', requireAdminRole, async (req, res) => {
+  try {
+    const { data: notification, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!notification) return safeError(res, 404, 'Notification not found');
+
+    const { count: totalRecipients } = await supabase
+      .from('notification_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('notification_id', req.params.id);
+    const { count: readCount } = await supabase
+      .from('notification_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('notification_id', req.params.id)
+      .eq('is_read', true);
+    const { count: pushSentCount } = await supabase
+      .from('notification_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('notification_id', req.params.id)
+      .eq('push_status', 'sent');
+
+    res.json({
+      data: notification,
+      stats: {
+        recipients: totalRecipients || 0,
+        read: readCount || 0,
+        push_sent: pushSentCount || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching notification detail:', error);
+    res.status(500).json({ error: 'Failed to fetch notification' });
+  }
+});
+
+// Edit a draft/scheduled notification (can't edit one that already sent).
+app.put('/api/admin/notifications/:id', requireAdminRole, notificationWriteLimiter, async (req, res) => {
+  try {
+    const parsed = notificationSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid notification payload', details: parsed.error.flatten() });
+    }
+
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('status')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (!existing) return safeError(res, 404, 'Notification not found');
+    if (!['draft', 'scheduled'].includes(existing.status)) {
+      return safeError(res, 409, 'Only draft or scheduled notifications can be edited');
+    }
+
+    const updates = { ...parsed.data, updated_at: new Date().toISOString() };
+    if (updates.scheduled_at) {
+      updates.status = new Date(updates.scheduled_at) > new Date() ? 'scheduled' : 'draft';
+    }
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .update(updates)
+      .eq('id', req.params.id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error updating notification:', error);
+    res.status(500).json({ error: 'Failed to update notification' });
+  }
+});
+
+// Cancel a scheduled/draft notification, or delete a sent one's history.
+app.delete('/api/admin/notifications/:id', requireAdminRole, async (req, res) => {
+  try {
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('status')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (!existing) return safeError(res, 404, 'Notification not found');
+
+    if (['draft', 'scheduled'].includes(existing.status)) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ status: 'cancelled' })
+        .eq('id', req.params.id);
+      if (error) throw error;
+      return res.json({ success: true, cancelled: true });
+    }
+
+    const { error } = await supabase.from('notifications').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true, deleted: true });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({ error: 'Failed to delete notification' });
+  }
+});
+
+// Force-send a draft/scheduled notification right now.
+app.post('/api/admin/notifications/:id/send-now', requireAdminRole, notificationWriteLimiter, async (req, res) => {
+  try {
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('status')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (!existing) return safeError(res, 404, 'Notification not found');
+    if (!['draft', 'scheduled', 'failed'].includes(existing.status)) {
+      return safeError(res, 409, 'Notification already sent or in progress');
+    }
+
+    const result = await dispatchNotification(req.params.id);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({ error: 'Failed to send notification' });
+  }
+});
+
+// Estimate how many users a target configuration would reach, for the
+// admin composer UI ("This will reach ~1,204 users").
+app.post('/api/admin/notifications/preview-audience', requireAdminRole, async (req, res) => {
+  try {
+    const { target_type, target_segment, target_user_ids } = req.body || {};
+    const ids = await resolveTargetUserIds({ target_type, target_segment, target_user_ids });
+    res.json({ count: ids.length });
+  } catch (error) {
+    console.error('Error previewing audience:', error);
+    res.status(500).json({ error: error.message || 'Failed to preview audience' });
+  }
+});
+
 
 // Serve static files from the public and Vite build directories
 const publicPath = path.join(__dirname, 'public');

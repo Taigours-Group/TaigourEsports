@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { adminFetch } from '../services/adminAuth';
 import { REQUEST_TYPES, REQUEST_STATUS, MEMBERSHIP_BENEFITS, ADMIN_WHATSAPP } from '../constants/balanceConstants';
 
 const BRAND = {
@@ -24,7 +25,7 @@ const AdminRequestsPanel = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch('/api/purchase-requests?status=' + filter);
+      const response = await adminFetch('/api/purchase-requests?status=' + filter);
       if (!response.ok) throw new Error('Failed to fetch requests');
       const data = await response.json();
       setRequests(data);
@@ -38,7 +39,7 @@ const AdminRequestsPanel = () => {
   const handleApproveRequest = async (requestId) => {
     setProcessingId(requestId);
     try {
-      const response = await fetch(`/api/purchase-requests/${requestId}/approve`, {
+      const response = await adminFetch(`/api/purchase-requests/${requestId}/approve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_notes: adminNotes })
@@ -63,7 +64,7 @@ const AdminRequestsPanel = () => {
   const handleDeclineRequest = async (requestId) => {
     setProcessingId(requestId);
     try {
-      const response = await fetch(`/api/purchase-requests/${requestId}/decline`, {
+      const response = await adminFetch(`/api/purchase-requests/${requestId}/decline`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_notes: adminNotes })
