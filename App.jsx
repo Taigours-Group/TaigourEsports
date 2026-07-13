@@ -9,6 +9,8 @@ import Preloader from './components/Preloader.jsx';
 import LegalLayout from './pages/LegalLayout.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { dbService } from './services/dbService.js';
+import { balanceService } from './services/balanceService.js';
+import { hydrateCatalogFromSupabase } from './constants/balanceConstants.js';
 
 // Lazy load page components
 const HomePage = lazy(() => import('./pages/HomePage.jsx'));
@@ -33,6 +35,17 @@ const App = () => {
   const [streams, setStreams] = useState([]);
   const [registrations, setRegistrations] = useState([]); 
   const [logs, setLogs] = useState([]);
+
+  const loadCatalog = useCallback(async () => {
+    try {
+      const { data, error } = await balanceService.getCatalog();
+      if (!error && data) {
+        hydrateCatalogFromSupabase(data);
+      }
+    } catch (error) {
+      console.error('Failed to load catalog:', error);
+    }
+  }, []);
 
   // Single shared data-fetch function — no duplication
   const refetchAllData = useCallback(async () => {
@@ -73,11 +86,12 @@ const App = () => {
     }
 
     const initialLoad = async () => {
+      await loadCatalog();
       await refetchAllData();
       setLoading(false);
     };
     initialLoad();
-  }, [refetchAllData]);
+  }, [loadCatalog, refetchAllData]);
 
   // Re-fetch data when the logged-in user changes (login / logout)
   useEffect(() => {

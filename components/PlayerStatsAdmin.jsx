@@ -32,6 +32,11 @@ const PlayerStatsAdmin = ({ registrations }) => {
   const [ledgerWalletId, setLedgerWalletId] = useState(null);
   const [ledgerRows, setLedgerRows] = useState([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [catalogMemberships, setCatalogMemberships] = useState(MEMBERSHIP_BENEFITS);
+
+  useEffect(() => {
+    setCatalogMemberships(MEMBERSHIP_BENEFITS);
+  }, []);
 
   // Fetch player statistics
   useEffect(() => {
@@ -316,7 +321,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
                     <td className="px-4 py-4">
                       <span className={`px-2 py-1 rounded text-xs font-bold border ${getMembershipBadgeColor(player.membership_tier)}`}>
                         <i className={`fa-solid fa-crown ${getMembershipColor(player.membership_tier)} mr-1`}></i>
-                        {MEMBERSHIP_BENEFITS[player.membership_tier]?.name || 'None'}
+                        {catalogMemberships[player.membership_tier]?.name || 'None'}
                       </span>
                     </td>
                     <td className="px-4 py-4 font-orbitron font-black text-primary">
@@ -416,7 +421,7 @@ const PlayerStatsAdmin = ({ registrations }) => {
                     onChange={(e) => setTempMembership(e.target.value)}
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:border-primary"
                   >
-                    {Object.entries(MEMBERSHIP_BENEFITS).map(([key, value]) => (
+                    {Object.entries(catalogMemberships).map(([key, value]) => (
                       <option className='bg-black' key={key} value={key}>
                         {value.name}
                       </option>

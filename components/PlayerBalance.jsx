@@ -15,6 +15,8 @@ const PlayerBalance = () => {
   const [selectedMembership, setSelectedMembership] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [catalogMemberships, setCatalogMemberships] = useState(MEMBERSHIP_BENEFITS);
+  const [catalogRechargePackages, setCatalogRechargePackages] = useState(RECHARGE_PACKAGES);
   const [transferForm, setTransferForm] = useState({ to_player_id: '', amount: '' });
   const [transferLoading, setTransferLoading] = useState(false);
   const [requestInfo, setRequestInfo] = useState({
@@ -24,6 +26,11 @@ const PlayerBalance = () => {
     payment_account_owner: '',
     players_id: profile?.player_id || ''
   });
+
+  useEffect(() => {
+    setCatalogMemberships(MEMBERSHIP_BENEFITS);
+    setCatalogRechargePackages(RECHARGE_PACKAGES);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -241,7 +248,7 @@ const PlayerBalance = () => {
                 ? 'text-gray-400' 
                 : 'text-yellow-400'
             }`}>
-              {MEMBERSHIP_BENEFITS[playerBalance?.membership_tier]?.name || 'Free Player'}
+              {catalogMemberships[playerBalance?.membership_tier]?.name || 'Free Player'}
             </div>
             {playerBalance?.membership_expires_at && playerBalance?.membership_tier !== 'none' && (
               <div className="text-xs text-gray-500 mt-1">
@@ -351,7 +358,7 @@ const PlayerBalance = () => {
               Recharge Packages
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {RECHARGE_PACKAGES.map((pkg, idx) => (
+              {catalogRechargePackages.map((pkg, idx) => (
                 <div
                   key={idx}
                   className="bg-bg-card border border-white/10 rounded-lg p-4 hover:border-primary/50 transition-all cursor-pointer group"
@@ -383,7 +390,7 @@ const PlayerBalance = () => {
               Membership Plans
             </h4>
             <div className="space-y-3">
-              {Object.entries(MEMBERSHIP_BENEFITS).map(([key, benefit]) => (
+              {Object.entries(catalogMemberships).map(([key, benefit]) => (
                 <div
                   key={key}
                   className={`border rounded-lg p-4 cursor-pointer transition-all ${
@@ -660,17 +667,17 @@ const PlayerBalance = () => {
             {selectedMembership && (
               <div className="space-y-4 mb-6 p-4 bg-white/5 rounded-lg">
                 <div className="text-lg font-bold text-white">
-                  {MEMBERSHIP_BENEFITS[selectedMembership].name}
+                  {catalogMemberships[selectedMembership]?.name || 'Membership'}
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Price:</span>
                   <span className="font-orbitron font-black text-primary">
-                    ◈ {MEMBERSHIP_BENEFITS[selectedMembership].price}
+                    ◈ {catalogMemberships[selectedMembership]?.price || 0}
                   </span>
                 </div>
                 <div className="border-t border-white/10 pt-4">
                   <div className="text-sm font-bold text-gray-300 mb-2">Benefits:</div>
-                  {MEMBERSHIP_BENEFITS[selectedMembership].benefits.map((b, idx) => (
+                  {(catalogMemberships[selectedMembership]?.benefits || []).map((b, idx) => (
                     <div key={idx} className="text-sm text-gray-400 mb-1">
                       <i className="fa-solid fa-check text-primary mr-2"></i>{b}
                     </div>

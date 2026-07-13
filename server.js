@@ -258,6 +258,188 @@ app.get('/api/csrf-token', (req, res) => {
   return res.json({ csrfToken: token });
 });
 
+app.get('/api/catalog', async (req, res) => {
+  try {
+    const [membershipResponse, rechargeResponse] = await Promise.all([
+      supabase
+        .from('membership_tiers')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('recharge_packages')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+    ]);
+
+    if (membershipResponse.error) throw membershipResponse.error;
+    if (rechargeResponse.error) throw rechargeResponse.error;
+
+    return res.json({
+      membershipTiers: membershipResponse.data || [],
+      rechargePackages: rechargeResponse.data || []
+    });
+  } catch (error) {
+    console.error('Failed to load catalog:', error);
+    return safeError(res, 500, 'Failed to load catalog');
+  }
+});
+
+app.get('/api/admin/catalog/membership-tiers', requireAdminRole, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('membership_tiers')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return res.json({ data: data || [] });
+  } catch (error) {
+    console.error('Failed to load membership tiers:', error);
+    return safeError(res, 500, 'Failed to load membership tiers');
+  }
+});
+
+app.post('/api/admin/catalog/membership-tiers', requireAdminRole, async (req, res) => {
+  try {
+    const payload = {
+      ...req.body,
+      id: req.body?.id || crypto.randomUUID(),
+      benefits: Array.isArray(req.body?.benefits) ? req.body.benefits : [],
+      price: Number(req.body?.price || 0),
+      sort_order: Number(req.body?.sort_order || 100),
+      is_popular: Boolean(req.body?.is_popular),
+      is_active: req.body?.is_active !== false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase.from('membership_tiers').insert([payload]).select();
+    if (error) throw error;
+    return res.json({ success: true, data: data?.[0] });
+  } catch (error) {
+    console.error('Failed to create membership tier:', error);
+    return safeError(res, 500, 'Failed to create membership tier');
+  }
+});
+
+app.put('/api/admin/catalog/membership-tiers/:id', requireAdminRole, async (req, res) => {
+  try {
+    const payload = {
+      ...req.body,
+      benefits: Array.isArray(req.body?.benefits) ? req.body.benefits : [],
+      price: Number(req.body?.price || 0),
+      sort_order: Number(req.body?.sort_order || 100),
+      is_popular: Boolean(req.body?.is_popular),
+      is_active: req.body?.is_active !== false,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('membership_tiers')
+      .update(payload)
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) return safeError(res, 404, 'Membership tier not found');
+    return res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('Failed to update membership tier:', error);
+    return safeError(res, 500, 'Failed to update membership tier');
+  }
+});
+
+app.delete('/api/admin/catalog/membership-tiers/:id', requireAdminRole, async (req, res) => {
+  try {
+    const { error } = await supabase.from('membership_tiers').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete membership tier:', error);
+    return safeError(res, 500, 'Failed to delete membership tier');
+  }
+});
+
+app.get('/api/admin/catalog/recharge-packages', requireAdminRole, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('recharge_packages')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return res.json({ data: data || [] });
+  } catch (error) {
+    console.error('Failed to load recharge packages:', error);
+    return safeError(res, 500, 'Failed to load recharge packages');
+  }
+});
+
+app.post('/api/admin/catalog/recharge-packages', requireAdminRole, async (req, res) => {
+  try {
+    const payload = {
+      ...req.body,
+      id: req.body?.id || crypto.randomUUID(),
+      amount: Number(req.body?.amount || 0),
+      bonus: Number(req.body?.bonus || 0),
+      cost: Number(req.body?.cost || 0),
+      sort_order: Number(req.body?.sort_order || 100),
+      is_active: req.body?.is_active !== false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase.from('recharge_packages').insert([payload]).select();
+    if (error) throw error;
+    return res.json({ success: true, data: data?.[0] });
+  } catch (error) {
+    console.error('Failed to create recharge package:', error);
+    return safeError(res, 500, 'Failed to create recharge package');
+  }
+});
+
+app.put('/api/admin/catalog/recharge-packages/:id', requireAdminRole, async (req, res) => {
+  try {
+    const payload = {
+      ...req.body,
+      amount: Number(req.body?.amount || 0),
+      bonus: Number(req.body?.bonus || 0),
+      cost: Number(req.body?.cost || 0),
+      sort_order: Number(req.body?.sort_order || 100),
+      is_active: req.body?.is_active !== false,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('recharge_packages')
+      .update(payload)
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) return safeError(res, 404, 'Recharge package not found');
+    return res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('Failed to update recharge package:', error);
+    return safeError(res, 500, 'Failed to update recharge package');
+  }
+});
+
+app.delete('/api/admin/catalog/recharge-packages/:id', requireAdminRole, async (req, res) => {
+  try {
+    const { error } = await supabase.from('recharge_packages').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete recharge package:', error);
+    return safeError(res, 500, 'Failed to delete recharge package');
+  }
+});
+
 function requireCsrf(req, res, next) {
   // Only enforce for state-changing endpoints
   const cookieToken = req.cookies?.csrf_token;

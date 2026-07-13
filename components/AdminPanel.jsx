@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, lazy, Suspense, useEffect } from 'react';
 import { adminFetch } from '../services/adminAuth';
+import { hydrateCatalogFromSupabase } from '../constants/balanceConstants';
 
 // Lazy-load AdminRequestsPanel at module level (not inside a render function)
 const AdminRequestsPanel = lazy(() => import('./AdminRequestsPanel'));
@@ -26,6 +27,67 @@ const AdminPanel = ({
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [editRegForm, setEditRegForm] = useState({});
   const [savingReg, setSavingReg] = useState(false);
+  const [catalogMode, setCatalogMode] = useState('membership');
+  const [membershipItems, setMembershipItems] = useState([]);
+  const [rechargeItems, setRechargeItems] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [membershipForm, setMembershipForm] = useState({
+    slug: '',
+    name: '',
+    short_name: '',
+    price: '0',
+    color: 'gray',
+    icon: 'user',
+    benefits: '',
+    description: '',
+    badge_label: '',
+    is_popular: false,
+    sort_order: '100',
+    is_active: true
+  });
+  const [rechargeForm, setRechargeForm] = useState({
+    amount: '0',
+    bonus: '0',
+    cost: '0',
+    icon: 'fa-wallet',
+    sort_order: '100',
+    is_active: true
+  });
+  const [editingCatalogId, setEditingCatalogId] = useState(null);
+
+  const loadCatalogData = async () => {
+    try {
+      setCatalogLoading(true);
+      const [membershipRes, rechargeRes] = await Promise.all([
+        adminFetch('/api/admin/catalog/membership-tiers'),
+        adminFetch('/api/admin/catalog/recharge-packages')
+      ]);
+
+      if (!membershipRes.ok || !rechargeRes.ok) throw new Error('Failed to load catalog');
+
+      const [membershipData, rechargeData] = await Promise.all([
+        membershipRes.json(),
+        rechargeRes.json()
+      ]);
+
+      setMembershipItems(membershipData.data || []);
+      setRechargeItems(rechargeData.data || []);
+      hydrateCatalogFromSupabase({
+        membershipTiers: membershipData.data || [],
+        rechargePackages: rechargeData.data || []
+      });
+    } catch (error) {
+      console.error('Failed to load catalog data:', error);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === 'catalog') {
+      loadCatalogData();
+    }
+  }, [activeView]);
 
   useEffect(() => {
     if (viewingReg && viewingReg.id) {
@@ -114,6 +176,32 @@ const AdminPanel = ({
     title: '', youtubeid: '', islive: false
   };
 
+  const resetCatalogForms = () => {
+    setEditingCatalogId(null);
+    setMembershipForm({
+      slug: '',
+      name: '',
+      short_name: '',
+      price: '0',
+      color: 'gray',
+      icon: 'user',
+      benefits: '',
+      description: '',
+      badge_label: '',
+      is_popular: false,
+      sort_order: '100',
+      is_active: true
+    });
+    setRechargeForm({
+      amount: '0',
+      bonus: '0',
+      cost: '0',
+      icon: 'fa-wallet',
+      sort_order: '100',
+      is_active: true
+    });
+  };
+
   // Form States
   const [tourneyForm, setTourneyForm] = useState(initialTournament);
   const [lbForm, setLbForm] = useState(initialLeaderboard);
@@ -178,6 +266,7 @@ const AdminPanel = ({
     setTourneyForm(initialTournament);
     setLbForm(initialLeaderboard);
     setStreamForm(initialStream);
+    resetCatalogForms();
   };
 
   const handleSaveTournament = async (e) => {
@@ -321,6 +410,126 @@ const AdminPanel = ({
     } catch (error) {
       console.error('Save stream failed:', error);
       alert('Failed to save stream. Please try again.');
+    }
+  };
+
+  const handleSaveMembershipCatalog = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...membershipForm,
+        benefits: (membershipForm.benefits || '').split('\n').map(item => item.trim()).filter(Boolean),
+        price: Number(membershipForm.price || 0),
+        sort_order: Number(membershipForm.sort_order || 100),
+        is_popular: Boolean(membershipForm.is_popular),
+        is_active: membershipForm.is_active !== false
+      };
+
+      const url = editingCatalogId
+        ? `/api/admin/catalog/membership-tiers/${editingCatalogId}`
+        : '/api/admin/catalog/membership-tiers';
+      const method = editingCatalogId ? 'PUT' : 'POST';
+      const response = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to save membership tier');
+      }
+      await loadCatalogData();
+      resetCatalogForms();
+      alert(editingCatalogId ? 'Membership tier updated.' : 'Membership tier created.');
+    } catch (error) {
+      console.error('Save membership catalog failed:', error);
+      alert(error.message || 'Failed to save membership tier');
+    }
+  };
+
+  const handleSaveRechargeCatalog = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...rechargeForm,
+        amount: Number(rechargeForm.amount || 0),
+        bonus: Number(rechargeForm.bonus || 0),
+        cost: Number(rechargeForm.cost || 0),
+        sort_order: Number(rechargeForm.sort_order || 100),
+        is_active: rechargeForm.is_active !== false
+      };
+
+      const url = editingCatalogId
+        ? `/api/admin/catalog/recharge-packages/${editingCatalogId}`
+        : '/api/admin/catalog/recharge-packages';
+      const method = editingCatalogId ? 'PUT' : 'POST';
+      const response = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to save recharge package');
+      }
+      await loadCatalogData();
+      resetCatalogForms();
+      alert(editingCatalogId ? 'Recharge package updated.' : 'Recharge package created.');
+    } catch (error) {
+      console.error('Save recharge catalog failed:', error);
+      alert(error.message || 'Failed to save recharge package');
+    }
+  };
+
+  const handleDeleteCatalogItem = async (type, id) => {
+    if (!window.confirm('Delete this catalog item?')) return;
+    try {
+      const response = await adminFetch(
+        type === 'membership'
+          ? `/api/admin/catalog/membership-tiers/${id}`
+          : `/api/admin/catalog/recharge-packages/${id}`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete item');
+      }
+      await loadCatalogData();
+      if (editingCatalogId === id) resetCatalogForms();
+      alert('Catalog item deleted.');
+    } catch (error) {
+      console.error('Delete catalog item failed:', error);
+      alert(error.message || 'Failed to delete catalog item');
+    }
+  };
+
+  const startCatalogEdit = (item, type) => {
+    setCatalogMode(type);
+    setEditingCatalogId(item.id);
+    if (type === 'membership') {
+      setMembershipForm({
+        slug: item.slug || '',
+        name: item.name || '',
+        short_name: item.short_name || '',
+        price: String(item.price || 0),
+        color: item.color || 'gray',
+        icon: item.icon || 'user',
+        benefits: Array.isArray(item.benefits) ? item.benefits.join('\n') : '',
+        description: item.description || '',
+        badge_label: item.badge_label || '',
+        is_popular: Boolean(item.is_popular),
+        sort_order: String(item.sort_order || 100),
+        is_active: item.is_active !== false
+      });
+    } else {
+      setRechargeForm({
+        amount: String(item.amount || 0),
+        bonus: String(item.bonus || 0),
+        cost: String(item.cost || 0),
+        icon: item.icon || 'fa-wallet',
+        sort_order: String(item.sort_order || 100),
+        is_active: item.is_active !== false
+      });
     }
   };
 
@@ -509,6 +718,7 @@ const AdminPanel = ({
             {[
               { id: 'dashboard', label: 'Dash', icon: 'fa-chart-pie' }, 
               { id: 'players', label: 'Players', icon: 'fa-user-gear' },
+              { id: 'catalog', label: 'Catalog', icon: 'fa-gem' },
               { id: 'tournaments', label: 'Arenas', icon: 'fa-crosshairs' },
               { id: 'leaderboard', label: 'Ranks', icon: 'fa-crown' },
               { id: 'streams', label: 'Feeds', icon: 'fa-bolt' }, 
@@ -600,7 +810,100 @@ const AdminPanel = ({
               </div>
             )}
 
-            {activeView !== 'dashboard' && activeView !== 'logs' && activeView !== 'players' && (
+            {activeView === 'catalog' && (
+              <div className="bg-bg-card rounded-2xl border border-white/5 overflow-hidden animate-fade-in shadow-2xl p-4 md:p-6 space-y-6">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setCatalogMode('membership')}
+                    className={`px-3 py-2 rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest ${catalogMode === 'membership' ? 'bg-primary text-dark' : 'bg-white/5 text-gray-400'}`}
+                  >
+                    Membership Tiers
+                  </button>
+                  <button
+                    onClick={() => setCatalogMode('recharge')}
+                    className={`px-3 py-2 rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest ${catalogMode === 'recharge' ? 'bg-primary text-dark' : 'bg-white/5 text-gray-400'}`}
+                  >
+                    Recharge Packs
+                  </button>
+                </div>
+
+                {catalogMode === 'membership' ? (
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <form onSubmit={handleSaveMembershipCatalog} className="space-y-3 bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="text-sm font-orbitron font-black text-white uppercase tracking-widest">{editingCatalogId ? 'Edit Membership Tier' : 'Add Membership Tier'}</div>
+                      <input value={membershipForm.slug} onChange={(e) => setMembershipForm({ ...membershipForm, slug: e.target.value })} placeholder="slug (e.g. gold)" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input value={membershipForm.name} onChange={(e) => setMembershipForm({ ...membershipForm, name: e.target.value })} placeholder="Display name" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input value={membershipForm.short_name} onChange={(e) => setMembershipForm({ ...membershipForm, short_name: e.target.value })} placeholder="Short name" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input type="number" value={membershipForm.price} onChange={(e) => setMembershipForm({ ...membershipForm, price: e.target.value })} placeholder="Price" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input value={membershipForm.color} onChange={(e) => setMembershipForm({ ...membershipForm, color: e.target.value })} placeholder="Color (gray/amber/yellow)" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input value={membershipForm.icon} onChange={(e) => setMembershipForm({ ...membershipForm, icon: e.target.value })} placeholder="Icon" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <textarea value={membershipForm.benefits} onChange={(e) => setMembershipForm({ ...membershipForm, benefits: e.target.value })} placeholder="Benefits (one per line)" rows="4" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <textarea value={membershipForm.description} onChange={(e) => setMembershipForm({ ...membershipForm, description: e.target.value })} placeholder="Description" rows="2" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input value={membershipForm.badge_label} onChange={(e) => setMembershipForm({ ...membershipForm, badge_label: e.target.value })} placeholder="Badge label" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <div className="flex gap-4 text-sm text-gray-300">
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={membershipForm.is_popular} onChange={(e) => setMembershipForm({ ...membershipForm, is_popular: e.target.checked })} /> Popular</label>
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={membershipForm.is_active} onChange={(e) => setMembershipForm({ ...membershipForm, is_active: e.target.checked })} /> Active</label>
+                      </div>
+                      <input type="number" value={membershipForm.sort_order} onChange={(e) => setMembershipForm({ ...membershipForm, sort_order: e.target.value })} placeholder="Sort order" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-4 py-2 bg-primary text-dark rounded-lg font-bold">{editingCatalogId ? 'Save Tier' : 'Create Tier'}</button>
+                        <button type="button" onClick={resetCatalogForms} className="px-4 py-2 bg-white/10 text-white rounded-lg">Reset</button>
+                      </div>
+                    </form>
+                    <div className="space-y-3">
+                      {catalogLoading ? <div className="text-gray-400">Loading catalog…</div> : membershipItems.map(item => (
+                        <div key={item.id} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <div className="font-bold text-white">{item.name}</div>
+                              <div className="text-xs text-gray-400">Slug: {item.slug} • Price: ◈ {item.price} • Order: {item.sort_order}</div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => startCatalogEdit(item, 'membership')} className="px-2 py-1 text-xs bg-primary/20 text-primary rounded">Edit</button>
+                              <button onClick={() => handleDeleteCatalogItem('membership', item.id)} className="px-2 py-1 text-xs bg-pink/20 text-pink rounded">Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <form onSubmit={handleSaveRechargeCatalog} className="space-y-3 bg-white/5 rounded-xl p-4 border border-white/10">
+                      <div className="text-sm font-orbitron font-black text-white uppercase tracking-widest">{editingCatalogId ? 'Edit Recharge Package' : 'Add Recharge Package'}</div>
+                      <input type="number" value={rechargeForm.amount} onChange={(e) => setRechargeForm({ ...rechargeForm, amount: e.target.value })} placeholder="Package amount" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input type="number" value={rechargeForm.bonus} onChange={(e) => setRechargeForm({ ...rechargeForm, bonus: e.target.value })} placeholder="Bonus amount" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input type="number" value={rechargeForm.cost} onChange={(e) => setRechargeForm({ ...rechargeForm, cost: e.target.value })} placeholder="Cost" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <input value={rechargeForm.icon} onChange={(e) => setRechargeForm({ ...rechargeForm, icon: e.target.value })} placeholder="Icon class" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <div className="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" checked={rechargeForm.is_active} onChange={(e) => setRechargeForm({ ...rechargeForm, is_active: e.target.checked })} /> Active</div>
+                      <input type="number" value={rechargeForm.sort_order} onChange={(e) => setRechargeForm({ ...rechargeForm, sort_order: e.target.value })} placeholder="Sort order" className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white" />
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-4 py-2 bg-primary text-dark rounded-lg font-bold">{editingCatalogId ? 'Save Package' : 'Create Package'}</button>
+                        <button type="button" onClick={resetCatalogForms} className="px-4 py-2 bg-white/10 text-white rounded-lg">Reset</button>
+                      </div>
+                    </form>
+                    <div className="space-y-3">
+                      {catalogLoading ? <div className="text-gray-400">Loading catalog…</div> : rechargeItems.map(item => (
+                        <div key={item.id} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <div className="font-bold text-white">◈ {item.amount} + ◈ {item.bonus}</div>
+                              <div className="text-xs text-gray-400">Cost: रु {item.cost} • Order: {item.sort_order}</div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => startCatalogEdit(item, 'recharge')} className="px-2 py-1 text-xs bg-primary/20 text-primary rounded">Edit</button>
+                              <button onClick={() => handleDeleteCatalogItem('recharge', item.id)} className="px-2 py-1 text-xs bg-pink/20 text-pink rounded">Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeView !== 'dashboard' && activeView !== 'logs' && activeView !== 'players' && activeView !== 'catalog' && (
               <div className="bg-bg-card rounded-2xl border border-white/5 overflow-hidden animate-fade-in shadow-2xl">
                 <div className="p-4 md:p-6 border-b border-white/5 flex flex-col gap-4">
                   <div className="relative w-full flex-grow">

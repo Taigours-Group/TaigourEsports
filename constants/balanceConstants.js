@@ -7,48 +7,112 @@ export const MEMBERSHIP_TIERS = {
   PLATINUM: 'platinum'
 };
 
-// Membership Benefits
-export const MEMBERSHIP_BENEFITS = {
+const DEFAULT_MEMBERSHIP_BENEFITS = {
   [MEMBERSHIP_TIERS.NONE]: {
     name: 'Free Player',
     price: 0,
     color: 'gray',
     benefits: ['Basic tournament access', 'Limited daily tournaments']
-  },
-  [MEMBERSHIP_TIERS.BRONZE]: {
-    name: 'Bronze Member',
-    price: 99,
-    color: 'amber',
-    benefits: ['Unlimited tournaments', '5% prize boost', 'Priority support']
-  },
-  [MEMBERSHIP_TIERS.SILVER]: {
-    name: 'Silver Member',
-    price: 199,
-    color: 'slate',
-    benefits: ['Unlimited tournaments', '10% prize boost', 'Priority support', 'Exclusive events']
-  },
-  [MEMBERSHIP_TIERS.GOLD]: {
-    name: 'Gold Member',
-    price: 499,
-    color: 'yellow',
-    benefits: ['Unlimited tournaments', '15% prize boost', 'VIP support', 'Exclusive events', 'Monthly rewards']
-  },
-  [MEMBERSHIP_TIERS.PLATINUM]: {
-    name: 'Platinum Member',
-    price: 999, 
-    color: 'cyan',
-    benefits: ['Unlimited tournaments', '25% prize boost', '24/7 VIP support', 'All exclusive events', 'Monthly rewards + bonus']
   }
 };
 
-// Recharge Packages
-export const RECHARGE_PACKAGES = [
-  { amount: 100, bonus: 10, cost: 99, icon: 'fa-wallet' },
-  { amount: 500, bonus: 60, cost: 499, icon: 'fa-money-bill' },
-  { amount: 1000, bonus: 150, cost: 999, icon: 'fa-coins' },
-  { amount: 2500, bonus: 500, cost: 2599, icon: 'fa-money-bill-wave' },
-  { amount: 5000, bonus: 1250, cost: 5999, icon: 'fa-gem' }
-];
+const DEFAULT_MEMBERSHIP_STYLE = {
+  [MEMBERSHIP_TIERS.NONE]: { label: 'Free Player', short: 'FREE', color: '#9CA3AF', icon: 'user' }
+};
+
+const DEFAULT_RECHARGE_PACKAGES = [];
+
+const COLOR_MAP = {
+  gray: '#9CA3AF',
+  amber: '#F59E0B',
+  slate: '#64748B',
+  yellow: '#FACC15',
+  cyan: '#22D3EE',
+  red: '#EF4444',
+  green: '#22C55E',
+  blue: '#3B82F6',
+  purple: '#8B5CF6',
+  pink: '#EC4899',
+  white: '#F8FAFC',
+};
+
+const normalizeTierColor = (color) => {
+  if (!color) return '#9CA3AF';
+  const key = String(color).toLowerCase();
+  return COLOR_MAP[key] || color;
+};
+
+export let MEMBERSHIP_BENEFITS = DEFAULT_MEMBERSHIP_BENEFITS;
+export let MEMBERSHIP_STYLE = DEFAULT_MEMBERSHIP_STYLE;
+export let RECHARGE_PACKAGES = DEFAULT_RECHARGE_PACKAGES;
+
+export const hydrateCatalogFromSupabase = (rows = {}) => {
+  const tiers = {};
+  const style = {};
+  const packages = [];
+
+  // Accept multiple shapes: { membershipTiers, rechargePackages },
+  // { membership_tiers, recharge_packages }, or Supabase style { data: { membership_tiers, recharge_packages } }
+  const src = rows?.data || rows;
+  const membershipRows = src?.membershipTiers || src?.membership_tiers || src?.membership || src?.memberships || [];
+  const rechargeRows = src?.rechargePackages || src?.recharge_packages || src?.recharge || src?.rechargePackages || [];
+
+  (Array.isArray(membershipRows) ? membershipRows : []).forEach((item) => {
+    const slug = item.slug || item.tier || item.name?.toLowerCase?.()?.replace(/\s+/g, '_') || 'none';
+    const normalized = {
+      name: item.name || slug,
+      price: Number(item.price || 0),
+      color: item.color || 'gray',
+      benefits: Array.isArray(item.benefits) ? item.benefits : (item.benefit || item.benefits || []),
+      shortName: item.short_name || item.shortName || item.short || slug.toUpperCase(),
+      icon: item.icon || 'user',
+      description: item.description || item.desc || null,
+      badgeLabel: item.badge_label || item.badgeLabel || null,
+      isPopular: Boolean(item.is_popular || item.isPopular),
+    };
+
+    tiers[slug] = normalized;
+    style[slug] = {
+      label: normalized.name,
+      short: normalized.badgeLabel || normalized.shortName || slug.toUpperCase(),
+      color: normalizeTierColor(normalized.color),
+      icon: normalized.icon,
+      description: normalized.description,
+      isPopular: normalized.isPopular,
+    };
+  });
+
+  if (!tiers[MEMBERSHIP_TIERS.NONE]) {
+    tiers[MEMBERSHIP_TIERS.NONE] = DEFAULT_MEMBERSHIP_BENEFITS[MEMBERSHIP_TIERS.NONE];
+    style[MEMBERSHIP_TIERS.NONE] = DEFAULT_MEMBERSHIP_STYLE[MEMBERSHIP_TIERS.NONE];
+  }
+
+  if (Object.keys(tiers).length === 0) {
+    Object.assign(tiers, DEFAULT_MEMBERSHIP_BENEFITS);
+    Object.assign(style, DEFAULT_MEMBERSHIP_STYLE);
+  }
+
+  (Array.isArray(rechargeRows) ? rechargeRows : []).forEach((item) => {
+    packages.push({
+      amount: Number(item.amount || 0),
+      bonus: Number(item.bonus || 0),
+      cost: Number(item.cost || 0),
+      icon: item.icon || 'fa-wallet',
+    });
+  });
+
+  if (packages.length === 0) {
+    packages.push(...DEFAULT_RECHARGE_PACKAGES);
+  }
+
+  MEMBERSHIP_BENEFITS = tiers;
+  MEMBERSHIP_STYLE = style;
+  RECHARGE_PACKAGES = packages;
+};
+
+// Normalize any tier value (unknown/missing -> none) to its style entry.
+export const getTierStyle = (tier) =>
+  MEMBERSHIP_STYLE[tier] || MEMBERSHIP_STYLE[MEMBERSHIP_TIERS.NONE];
 
 // Transaction Types
 export const TRANSACTION_TYPES = {

@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        allowedHosts: 'https://taigouresports.onrender.com',
+        allowedHosts: 'https://taigour-esports.onrender.com',
         proxy: {
           '/api': {
             target: 'http://localhost:10000',

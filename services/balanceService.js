@@ -100,6 +100,20 @@ class BalanceService {
       return { error };
     }
   }
+
+  // Fetch membership tiers and recharge packages from the backend catalog endpoint
+  async getCatalog() {
+    try {
+      const response = await fetch('/api/catalog');
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to fetch catalog');
+      return { data: result };
+    } catch (error) {
+      console.error('Error fetching catalog:', error);
+      return { error };
+    }
+  }
 }
 
 export const balanceService = new BalanceService();
+
