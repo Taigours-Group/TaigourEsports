@@ -1,7 +1,7 @@
 {
   "name": "taigour-e-sports",
   "private": true,
-  "version": "6.0.1",
+  "version": "7.15.4",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
