@@ -5,6 +5,7 @@ import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AdminGate from './components/AdminGate.jsx';
 import AdminPanel from './components/AdminPanel.jsx';
+import OnboardingModal from './components/OnboardingModal.jsx';
 import Preloader from './components/Preloader.jsx';
 import LegalLayout from './pages/LegalLayout.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -262,6 +263,9 @@ const App = () => {
       <div className="min-h-screen relative bg-bg-dark">
         {/* Hide global site header on admin route (admin has its own header) */}
         {window.location.pathname !== '/admin' && <Header />}
+
+        {/* New-account onboarding: collect full name, age, game UID & contact right after login */}
+        <OnboardingModal />
 
         <main className="min-h-[80vh]">
           <Routes>

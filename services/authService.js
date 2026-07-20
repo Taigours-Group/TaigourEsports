@@ -86,13 +86,13 @@ class AuthService {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('Error fetching profile:', error.message);
       return { error };
     }
-    return { data: error?.code === 'PGRST116' ? null : data };
+    return { data };
   }
 
   async createProfile(userId, profileData) {
